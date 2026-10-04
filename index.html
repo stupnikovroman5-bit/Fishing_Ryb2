@@ -1,0 +1,3951 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Симулятор Рыбалки и Криминала</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+ * { box-sizing: border-box; }
+   html, body {
+   margin: 0; padding: 0; width: 100%;
+   background-color: #e0f7fa;
+   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+   overflow-y: auto;
+   }
+   body { padding: 20px 10px; }
+   .game-container {
+   background-color: #ffffff; padding: 24px; border-radius: 16px;
+   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+   text-align: center; width: 100%; max-width: 440px;
+   margin: 0 auto 40px auto; position: relative;
+   }
+   .top-balance {
+   background-color: #004d40; color: #ffffff; padding: 12px 16px;
+   border-radius: 12px; font-size: 14px; font-weight: bold;
+   margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;
+   }
+   .top-row { display: flex; justify-content: space-between; align-items: center; }
+   .tabs-container { display: flex; gap: 4px; margin-bottom: 15px; }
+   .tab-btn {
+   flex: 1; padding: 8px 2px; font-size: 11px; font-weight: bold;
+   border: none; border-radius: 8px; background-color: #b2dfdb;
+   color: #004d40; cursor: pointer; transition: 0.2s;
+   }
+   .tab-btn.active { background-color: #00796b; color: white; }
+   .tab-content { display: none; }
+   .tab-content.active { display: block; }
+   .subtabs-container { display: flex; gap: 6px; margin-bottom: 12px; }
+   .subtab-btn {
+   flex: 1; padding: 6px; font-size: 11px; font-weight: bold;
+   border: 1px solid #00796b; border-radius: 6px; background-color: #e0f2f1;
+   color: #00796b; cursor: pointer;
+   }
+   .subtab-btn.active { background-color: #00796b; color: white; }
+   .stats {
+   background-color: #e0f2f1; padding: 10px 12px; border-radius: 10px;
+   font-size: 13px; font-weight: bold; margin-bottom: 15px;
+   color: #004d40; display: flex; flex-direction: column; gap: 4px;
+   }
+   .stats-row { display: flex; justify-content: space-between; align-items: center; }
+   .btn-turn {
+   background-color: #00796b; color: white; border: none; padding: 12px;
+   font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer;
+   transition: 0.2s; width: 100%; margin-bottom: 8px;
+   box-shadow: 0 4px 6px rgba(0, 121, 107, 0.3);
+   }
+   .btn-turn:hover { background-color: #004d40; }
+   .btn-fish {
+   background-color: #0288d1; color: white; border: none; padding: 14px;
+   font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer;
+   transition: 0.2s; width: 100%; box-shadow: 0 4px 6px rgba(2, 136, 209, 0.3);
+   }
+   .btn-fish:hover:not(:disabled) { background-color: #01579b; }
+   .btn-fish:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.7; box-shadow: none; }
+   .cost-notice { font-size: 12px; color: #666; margin-top: 4px; margin-bottom: 10px; }
+   .notification {
+   color: #d32f2f; font-weight: bold; min-height: 24px;
+   margin: 5px 0; font-size: 13px;
+   }
+   .section-title {
+   font-size: 14px; font-weight: bold; margin-top: 15px; margin-bottom: 8px;
+   color: #333; text-align: left; border-bottom: 2px solid #b2dfdb; padding-bottom: 4px;
+   }
+   .inventory-grid, .workers-grid, .fields-grid, .company-grid {
+   display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;
+   }
+   .worker-card { display: flex; flex-direction: column; gap: 4px; }
+   .slot {
+   height: 75px; min-height: 75px; max-height: 75px; width: 100%;
+   border: 2px dashed #b2ebf2; border-radius: 10px;
+   display: flex; flex-direction: column; justify-content: center;
+   align-items: center; background-color: #fafafa; font-size: 11px;
+   cursor: pointer; transition: all 0.2s; padding: 4px;
+   overflow: hidden; word-break: break-word;
+   }
+   .slot.filled { border: 2px solid #00897b; background-color: #e0f2f1; }
+   .slot.rare-item { border: 2px solid #e91e63; background-color: #fce4ec; }
+   .slot.ocean-item { border: 2px solid #3f51b5; background-color: #e8eaf6; }
+   .slot.powder-item { border: 2px solid #7b1fa2; background-color: #f3e5f5; }
+   .slot.treasure-item { border: 2px solid #ffb300; background-color: #fff8e1; box-shadow: 0 0 8px rgba(255,179,0,0.6); }
+   .slot.locked { border: 2px solid #d32f2f; background-color: #ffebee; cursor: not-allowed; }
+   .slot.worker-slot { border: 2px solid #0288d1; background-color: #e1f5fe; height: 75px; min-height: 75px; max-height: 75px; }
+   .slot.worker-loot { height: 75px; min-height: 75px; max-height: 75px; }
+   .slot.worker-loot.treasure-item { border: 2px solid #ffb300; background-color: #fff8e1; box-shadow: 0 0 8px rgba(255,179,0,0.6); }
+   .slot.field-slot { border: 2px solid #795548; background-color: #efebe9; height: 75px; min-height: 75px; max-height: 75px; }
+   .slot .item-icon { font-size: 18px; line-height: 1.1; }
+   .slot .item-name { font-weight: bold; font-size: 10px; }
+   .slot .item-price { color: #2e7d32; font-weight: bold; font-size: 10px; }
+   .btn-action {
+   background-color: #4caf50; color: white; border: none; padding: 10px 12px;
+   margin: 4px 0; font-size: 13px; font-weight: bold; border-radius: 8px;
+   cursor: pointer; width: 100%; display: flex;
+   justify-content: space-between; align-items: center;
+   }
+   .btn-action:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.7; }
+   .btn-credit { background-color: #ff9800; }
+   .btn-casino { background-color: #9c27b0; }
+   .btn-guard { background-color: #607d8b; }
+   .btn-bribe { background-color: #d84315; }
+   .building-row { display: flex; gap: 6px; margin: 4px 0; }
+   .stocks-container, .gangs-container, .market-container, .realty-container, .business-container, .competitors-container, .company-warehouse-container {
+   display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;
+   }
+   .stock-card, .gang-card, .market-card, .realty-card, .business-card, .competitor-card {
+   background-color: #f5f5f5; border: 1px solid #cfd8dc; border-radius: 8px;
+   padding: 10px 12px; display: flex; justify-content: space-between;
+   align-items: center; font-size: 12px;
+   }
+   .gang-card, .business-card, .realty-card, .competitor-card {
+   flex-direction: column; align-items: stretch; gap: 6px; cursor: pointer;
+   }
+   .stock-info, .gang-info, .market-info, .realty-info, .business-info, .competitor-info { text-align: left; }
+   .stock-title, .gang-title, .market-title, .realty-title, .business-title, .competitor-title { font-weight: bold; font-size: 13px; }
+   .stock-price, .gang-loyalty, .market-price, .realty-price, .business-price, .competitor-loyalty { color: #00796b; font-weight: bold; }
+   .stock-btns, .realty-btns, .business-btns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;}
+   .btn-stock, .btn-realty {
+   padding: 6px 8px; font-size: 10px; border: none; border-radius: 6px;
+   cursor: pointer; font-weight: bold; color: white;
+   }
+   .btn-buy-stock { background-color: #2e7d32; }
+   .btn-buy-dirty { background-color: #5d4037; }
+   .btn-sell-stock { background-color: #c62828; }
+   .btn-stock:disabled, .btn-realty:disabled { background-color: #aaa !important; cursor: not-allowed; }
+   .modal {
+   display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+   background: rgba(0,0,0,0.85); color: white; flex-direction: column;
+   justify-content: center; align-items: center; padding: 20px;
+   z-index: 1000; overflow-y: auto;
+   }
+   .modal button {
+   margin-top: 10px; padding: 10px 20px; font-weight: bold; border-radius: 8px;
+   border: none; cursor: pointer; width: 85%; max-width: 320px;
+   }
+   .modal button:disabled {
+   background-color: #555 !important; color: #888 !important;
+   cursor: not-allowed; opacity: 0.6;
+   }
+   .actress-card {
+   background: #37474f; border: 2px solid transparent; border-radius: 8px;
+   padding: 8px; text-align: left; cursor: pointer; transition: 0.2s;
+   }
+   .actress-card.selected { border-color: #00e676; background: #263238; }
+   .btn-small-boy {
+   background-color: #e91e63; color: white; border: none; padding: 4px 8px;
+   font-size: 11px; font-weight: bold; border-radius: 6px; cursor: pointer;
+   }
+   .hardcore-badge {
+   background: #c62828; color: white; font-size: 10px; padding: 2px 6px;
+   border-radius: 4px; font-weight: bold;
+   }
+   .startup-modal {
+   display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+   background: rgba(0,0,0,0.9); color: white; flex-direction: column;
+   justify-content: center; align-items: center; padding: 20px; z-index: 2000;
+   }
+   .startup-modal h2 { color: #00e676; margin-bottom: 10px; }
+   .startup-modal button {
+   margin-top: 10px; padding: 12px 20px; font-weight: bold; border-radius: 8px;
+   border: none; cursor: pointer; width: 85%; max-width: 320px; font-size: 15px;
+   }
+   .roulette-choice { display: flex; gap: 10px; width: 100%; max-width: 320px; }
+   .roulette-choice button {
+   flex: 1; padding: 14px; font-size: 16px; font-weight: bold;
+   border-radius: 8px; border: none; cursor: pointer; color: white;
+   }
+   #roulette-red { background: #c62828; }
+   #roulette-black { background: #212121; }
+   .diff-btn {
+   display: flex; justify-content: center; align-items: center;
+   padding: 14px 20px; font-size: 15px; font-weight: bold;
+   border-radius: 10px; border: none; cursor: pointer; color: white;
+   width: 85%; max-width: 320px; margin-top: 10px;
+   }
+   .interpol-panel {
+   background: #b71c1c; color: white; padding: 10px; border-radius: 10px;
+   margin-bottom: 8px; font-weight: bold; font-size: 12px;
+   display: none;
+   }
+   .interpol-panel.visible { display: block; }
+   .interpol-panel .interpol-row {
+   display: flex; gap: 6px; margin-top: 8px;
+   }
+   .interpol-panel button {
+   flex: 1; padding: 10px 4px; font-size: 12px; font-weight: bold;
+   border-radius: 8px; border: none; cursor: pointer; color: white;
+   }
+   .btn-interpol-lie { background: #2e7d32; }
+   .btn-interpol-surrender { background: #4a148c; }
+   .modal-input {
+   width: 85%; max-width: 320px; padding: 12px; border-radius: 8px;
+   border: none; text-align: center; font-size: 16px; margin-bottom: 10px;
+   }
+</style>
+</head>
+<body>
+
+<div id="startup-modal" class="startup-modal" style="display: flex;">
+  <h2>🎮 Симулятор Рыбалки и Криминала</h2>
+  <p style="font-size: 13px; text-align: center; color: #ffe082;">Обнаружено сохранение игры</p>
+  <button id="btn-continue-save" style="background: #2e7d32; color:white;">▶️ Продолжить с сохранения</button>
+  <button id="btn-start-new" style="background: #c62828; color:white;">🆕 Начать заново</button>
+</div>
+
+<div id="difficulty-modal" class="modal">
+<h2 style="color: #00e676; margin-bottom: 5px;">🎮 Выберите сложность игры</h2>
+<p style="font-size: 12px; text-align: center; max-width: 340px; color: #ffe082; font-weight: bold; margin-bottom: 10px; line-height: 1.4;">
+  <b>🎯 ЦЕЛЬ ИГРЫ:</b><br>
+  Прокачай <b>авторитет до 100%</b> и <b>подкупи выборы за $5000</b>, чтобы стать президентом.
+</p>
+<p style="font-size: 11px; text-align: center; max-width: 340px; color: #ffccbc; margin-bottom: 10px; line-height: 1.4;">
+  <b>Как играть:</b><br>
+  🎣 Рыбачь и продавай улов.<br>
+  💼 Купи бизнес и отмывай грязные деньги.<br>
+  🔫 Торгуй оружием и травой через банды.<br>
+  🏢 Накопи <b>$2500</b> — оснуй компанию для пассивного дохода.<br>
+  ⭐ Вкладывай в авторитетные предметы (яйцо, трамвай, самолёт).<br>
+  🗳️ Достигни 100% авторитета — и подкупи выборы!
+</p>
+<p style="font-size: 11px; text-align: center; color: #ffab91; margin-bottom: 10px; font-style: italic;">
+  Альтернативная победа: стань Королём PH (10 фильмов 18+ и 50% авторитета).
+</p>
+<p style="font-size: 10px; text-align: center; color: #b2dfdb; margin-bottom: 8px;">
+  🛠️ Разработчики: <b>@Glebanna</b> · <b>@Yadernoe_Orujjie</b>
+</p>
+<button class="diff-btn" style="background: #2e7d32;" onclick="setDifficulty(20)">🟢 Лёгкий</button>
+<button class="diff-btn" style="background: #f57f17;" onclick="setDifficulty(50)">🟡 Базовый</button>
+<button class="diff-btn" style="background: #c62828;" onclick="setDifficulty(70)">🔴 Сложный</button>
+</div>
+
+<div id="company-name-modal" class="modal">
+  <h2 style="color: #00e676;">🏢 Название компании</h2>
+  <p style="font-size: 12px; text-align: center; margin-bottom: 10px;">Введите название (макс. 25 символов):</p>
+  <input type="text" id="company-name-input" class="modal-input" placeholder="ЛесПром Инвест" maxlength="25">
+  <button style="background: #2e7d32; color:white;" onclick="confirmCompanyName()">✅ Основать ($2500)</button>
+  <button style="background: #78909c; color:white;" onclick="closeModal('company-name-modal')">Отмена</button>
+</div>
+
+<div id="movie-pay-modal" class="modal">
+  <h2 style="color: #e91e63;">🎬 Оплата съёмок</h2>
+  <p style="font-size: 13px; text-align: center; line-height: 1.4;">
+    Грязными: <b>$<span id="movie-pay-dirty">0</span></b><br>
+    Чистыми: <b>$<span id="movie-pay-clean">0</span></b>
+  </p>
+  <button style="background: #5d4037; color:white;" onclick="confirmMoviePayment(true)">🧼 Оплатить грязными</button>
+  <button style="background: #2e7d32; color:white;" onclick="confirmMoviePayment(false)">💵 Оплатить чистыми</button>
+  <button style="background: #78909c; color:white;" onclick="closeModal('movie-pay-modal')">Отмена</button>
+</div>
+
+<!-- Модалка недвижки: улучшения -->
+<div id="realty-upgrade-modal" class="modal">
+  <h2 style="color: #795548;">🏢 Улучшения недвижимости</h2>
+  <p style="font-size: 13px;" id="ru-title">Комната в Мурино</p>
+  <p style="font-size: 11px; color: #ffccbc;" id="ru-status"></p>
+  <button id="ru-smoke" style="background: #d32f2f; color:white;" onclick="buyRealtyUpgrade('smoke')">🔥 Датчик дыма — $200</button>
+  <button id="ru-paint" style="background: #7b1fa2; color:white;" onclick="buyRealtyUpgrade('paint')">🖼️ Картины — $400 (+25% к цене)</button>
+  <button id="ru-furn" style="background: #0288d1; color:white;" onclick="buyRealtyUpgrade('furniture')">🛋️ Мебель — $300 (+15% к цене)</button>
+  <button style="background: #78909c; color:white; margin-top:15px;" onclick="closeModal('realty-upgrade-modal')">Закрыть</button>
+</div>
+
+<div class="game-container">
+<div class="top-balance">
+<div class="top-row">
+<span>💵 Доллары: $<span id="balance">30</span></span>
+<span>🧼 Грязные: $<span id="dirty-balance">0</span></span>
+</div>
+<div class="top-row">
+<span>📈 Доход: $<span id="top-income">0</span>/ход</span>
+<span>⏳ Ход: <span id="turn-count">0</span></span>
+</div>
+<div class="top-row" style="justify-content: center;">
+<span style="font-size: 12px; color: #ffab91;" id="debt-info"></span>
+</div>
+<div class="top-row" style="justify-content: center;">
+<span style="font-size: 11px; color: #ffccbc;" id="difficulty-badge"></span>
+</div>
+<div class="top-row" style="justify-content: center;">
+<span style="font-size: 11px; color: #ff8a65;" id="dirty-actions-info"></span>
+</div>
+<div class="top-row" style="justify-content: center;">
+<span style="font-size: 11px; color: #ff8a65;" id="war-info"></span>
+</div>
+</div>
+<div style="display: flex; gap: 4px; margin-bottom: 10px;">
+  <button class="btn-action" style="background:#00796b; flex:1; justify-content:center; padding:6px; font-size:11px; margin:0;" onclick="saveGame()">💾 Сохранить</button>
+  <button class="btn-action" style="background:#0288d1; flex:1; justify-content:center; padding:6px; font-size:11px; margin:0;" onclick="loadGame()">📂 Загрузить</button>
+  <button class="btn-action" style="background:#9c27b0; flex:1; justify-content:center; padding:6px; font-size:11px; margin:0;" onclick="openPromoModal()">🎁 Промокод</button>
+</div>
+<div class="tabs-container">
+<button class="tab-btn active" onclick="switchTab('fish-tab', event)">🎣 Рыба</button>
+<button class="tab-btn" onclick="switchTab('market-tab', event)">🥷 Черный рынок</button>
+<button class="tab-btn" onclick="switchTab('diplomacy-tab', event)">🤝 Дипломатия</button>
+<button class="tab-btn" onclick="switchTab('realty-tab', event)">🏢 Недвиж</button>
+</div>
+<div id="notification" class="notification"></div>
+<div id="fish-tab" class="tab-content active">
+<div class="subtabs-container">
+<button class="subtab-btn active" id="subtab-fishing-btn" onclick="switchFishSubTab('fishing-subtab')">🎣 Рыбалка</button>
+<button class="subtab-btn" id="subtab-personality-btn" onclick="switchFishSubTab('personality-subtab')">👤 Личность</button>
+</div>
+<div id="fishing-subtab">
+<div class="stats">
+<div class="stats-row">
+<span>Удочка: <span id="rod-name">Обычная</span></span>
+<span>Очист. станция: <span id="station-status">Нет</span></span>
+</div>
+<div class="stats-row">
+<span>Охрана: <span id="guard-status">Нет</span></span>
+<span>Иммунитет: <span id="bribe-status">Нет</span></span>
+</div>
+</div>
+
+<div id="interpol-panel" class="interpol-panel">
+  🚨 РОЗЫСК ИНТЕРПОЛА! Осталось ходов: <span id="interpol-turns-ui">3</span>
+  <div class="interpol-row">
+    <button class="btn-interpol-lie" onclick="interpolLieLow()">🏃 Лечь на дно (60%)</button>
+    <button class="btn-interpol-surrender" onclick="interpolSurrender()">👮 Сдаться</button>
+  </div>
+</div>
+
+<button id="next-turn-btn" class="btn-turn" onclick="nextTurn()">⏳ Следующий ход ($5)</button>
+<button id="fish-btn" class="btn-fish" onclick="fish()">🎣 Рыбачить ($10) [<span id="fish-count-text">0/5</span>]</button>
+<div class="cost-notice">Стоимость заброса: $10 (макс. 5 рыб за 1 ход)</div>
+<div class="section-title">📦 Инвентарь игрока (20 ячеек, нажмите чтобы продать)</div>
+<div class="inventory-grid" id="inventory"></div>
+<div class="section-title">👷 Рабочие и их улов (4 слота)</div>
+<div class="workers-grid" id="workers-container"></div>
+<div class="section-title">🤝 Взятки (Иммунитет)</div>
+<button id="bribe-fish-btn" class="btn-action btn-bribe" onclick="buyBribe('fish')">
+<span>Откуп от Рыбнадзора (5 ходов)</span> <span>$80</span>
+</button>
+<button id="bribe-police-btn" class="btn-action btn-bribe" onclick="buyBribe('police')">
+<span>Откуп от Полиции (5 ходов)</span> <span>$100</span>
+</button>
+<div class="section-title">🛡️ Охрана (Защита от грабежа)</div>
+<button id="buy-guard-btn" class="btn-action btn-guard" onclick="buyGuard()">
+<span>Охранник (10 ходов, -90% риск)</span> <span>$100</span>
+</button>
+<button id="buy-dog-btn" class="btn-action btn-guard" onclick="buyDog()">
+<span>Собака (Навсегда, -80% риск)</span> <span>$110</span>
+</button>
+<div class="section-title">🛒 Магазин удочек</div>
+<button id="upg-1" class="btn-action" onclick="buyRod(1)">
+<span>Нормальная (+5% редким)</span> <span>$50</span>
+</button>
+<button id="upg-2" class="btn-action" onclick="buyRod(2)">
+<span>Улучшенная (+10% редким)</span> <span>$200</span>
+</button>
+<button id="upg-3" class="btn-action" onclick="buyRod(3)">
+<span>Из голды (+15% редким)</span> <span>$550</span>
+</button>
+<button id="upg-4" class="btn-action" onclick="buyRod(4)">
+<span>Спиннинг (Шанс Акулы/Марлина 9%)</span> <span>$1000</span>
+</button>
+<div class="section-title">🏠 Здания</div>
+<div class="building-row">
+<button id="bld-shop" class="btn-action" style="flex: 1;" onclick="buyBuilding('fishShop')">
+<span>Рыбный магазин</span> <span id="shop-price-text">$100</span>
+</button>
+</div>
+<button id="bld-shop-exchange" class="btn-action" style="background-color: #0288d1; display:none;" onclick="openFishExchange()">
+<span>🔄 Обменять рыбу (Магазин)</span> <span>Открыть</span>
+</button>
+<button id="bld-hotel" class="btn-action" onclick="buyBuilding('hotel')">
+<span>🏨 Отель ($30 каждые 3х)</span> <span>$300</span>
+</button>
+<button id="bld-salmon" class="btn-action" onclick="buyBuilding('salmonFarm')">
+<span>Ферма лосося (<span id="salmon-status-text">3х хода</span>)</span> <span>$70</span>
+</button>
+<button id="bld-station" class="btn-action" onclick="buyBuilding('station')">
+<span>Очистительная станция (Защита от яда)</span> <span>$75</span>
+</button>
+<button id="bld-sauna" class="btn-action" onclick="buyBuilding('banya')">
+<span>Коч баня (+15% шанс >$40)</span> <span>$150</span>
+</button>
+<button id="bld-casino" class="btn-action btn-casino" onclick="buyBuilding('casino')">
+<span>Казино Мелстроя (Рулетка)</span> <span>$250</span>
+</button>
+<button id="play-casino-btn" class="btn-action btn-casino" style="display:none; margin-top:8px;" onclick="openCasinoModal()">
+<span>🎰 Сыграть в Казино Мелстроя</span> <span>Испытать удачу</span>
+</button>
+<div id="casino-closed-notice" style="display:none; background:#c62828; color:white; padding:8px; border-radius:8px; font-size:12px; font-weight:bold; margin-top:8px;">
+  🚫 Казино Мелстроя закрыто Интерполом навсегда
+</div>
+<div class="section-title">💳 Кредиты</div>
+<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+<input type="number" id="credit-amount-input" placeholder="Сумма (макс $500)" min="1" max="500" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ff9800; text-align:center;">
+<input type="number" id="credit-term-input" placeholder="Срок (1-10)" min="1" max="10" value="5" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ff9800; text-align:center;">
+</div>
+<button id="take-credit-btn" class="btn-action btn-credit" onclick="takeCreditCustom()" style="justify-content:center;">
+<span>Взять кредит (+30% к возврату, макс $500)</span>
+</button>
+<div id="credits-list" style="margin-top:8px; text-align:left; font-size:12px;"></div>
+<button id="pay-debt-btn" class="btn-action" style="background-color: #e91e63; margin-top: 6px;" onclick="payAllDebts()">
+<span>Погасить следующий долг</span> <span id="pay-debt-val">$0</span>
+</button>
+<div class="section-title">📈 Акции Рынка</div>
+<div class="stocks-container" id="stocks-container"></div>
+<div class="section-title">🏦 Вклад за рубеж</div>
+<div style="background: #e0f2f1; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; text-align: left;">
+<div>💰 Сумма вклада: $<span id="deposit-amount-display">0</span></div>
+<div>📈 Процентная ставка: <span id="deposit-rate-display">3</span>%</div>
+<div>⏳ Статус выплат: <span id="deposit-turns-display">Вклад не открыт</span></div>
+<div style="display: flex; gap: 6px; margin-top: 8px;">
+<input type="number" id="deposit-input" placeholder="Сумма ($)" style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #00796b;">
+<button class="btn-action" style="flex: 1; margin: 0; background: #00796b; justify-content: center;" onclick="openForeignDeposit()">Пополнить/Открыть</button>
+</div>
+</div>
+<div class="section-title">🏦 Банк (Защита от ивентов)</div>
+<div style="background: #fff8e1; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; text-align: left; border: 1px solid #ffb300;">
+<div>💰 В банке: $<span id="bank-amount-display">0</span></div>
+<div>⏳ Статус: <span id="bank-status-display">Ячейка не открыта</span></div>
+<div style="font-size:11px; color:#8d6e63; margin-top:4px;">Деньги в банке не сгорают в ивентах. Забрать можно через 10 ходов.</div>
+<div style="display: flex; gap: 6px; margin-top: 8px;">
+<input type="number" id="bank-input" placeholder="Сумма ($)" style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ffb300;">
+<button class="btn-action" style="flex: 1; margin: 0; background: #ff9800; justify-content: center;" onclick="openBankDeposit()">Положить</button>
+</div>
+<button id="bank-withdraw-btn" class="btn-action" style="background:#2e7d32; justify-content:center; margin-top:6px; display:none;" onclick="withdrawBank()">💸 Забрать из банка</button>
+</div>
+</div>
+<div id="personality-subtab" style="display:none;">
+<div class="section-title">👤 Характеристики персонажа</div>
+<div class="stats" style="margin-top: 10px;">
+<div class="stats-row" style="margin-bottom: 6px;">
+<span>😊 Счастье <span style="font-size:11px; color:#00796b; cursor:pointer;" onclick="openHappinessModal()">(Нажмите)</span>:</span>
+<div style="display:flex; align-items:center; gap:6px;">
+<span id="happiness-val" style="color: #00796b;">50 / 100</span>
+<div id="boyfriend-container"></div>
+</div>
+</div>
+<div style="background: #b2dfdb; border-radius: 6px; height: 14px; overflow: hidden; margin-bottom: 12px; cursor: pointer;" onclick="openHappinessModal()">
+<div id="happiness-bar" style="background: #00796b; width: 50%; height: 100%; transition: width 0.3s;"></div>
+</div>
+<div class="stats-row" style="margin-bottom: 6px; cursor: pointer;" onclick="openHealthModal()">
+<span>❤️ Здоровье <span style="font-size:11px; color:#0288d1;">(Нажмите для лечения)</span>:</span>
+<span id="health-val" style="color: #c62828;">100 / 100</span>
+</div>
+<div style="background: #ffcdd2; border-radius: 6px; height: 14px; overflow: hidden; margin-bottom: 6px; cursor: pointer;" onclick="openHealthModal()">
+<div id="health-bar" style="background: #e53935; height: 100%; transition: width 0.3s; width: 100%;"></div>
+</div>
+<div style="font-size:11px; color:#2e7d32; font-weight:bold; min-height:14px; margin-bottom:8px;" id="doctor-status-text"></div>
+<div class="stats-row" style="margin-bottom: 6px; cursor: pointer;" onclick="openAuthorityModal()">
+<span>⭐ Авторитет <span style="font-size:11px; color:#f57f17;">(Улучшить)</span>:</span>
+<span id="authority-val" style="color: #f57f17;">0 / 100</span>
+</div>
+<div style="background: #fff9c4; border-radius: 6px; height: 14px; overflow: hidden; cursor: pointer;" onclick="openAuthorityModal()">
+<div id="authority-bar" style="background: #f57f17; width: 0%; height: 100%; transition: width 0.3s;"></div>
+</div>
+<div id="bribe-elections-container" style="margin-top: 10px;"></div>
+</div>
+<button class="btn-action" style="background-color: #00796b; margin-top: 10px;" onclick="openHappinessModal()">
+<span>😊 Действия со счастьем</span>
+<span>Открыть</span>
+</button>
+<button class="btn-action" style="background-color: #e53935; margin-top: 6px;" onclick="openHealthModal()">
+<span>💊 Меню аптечки (Лечение)</span>
+<span>Открыть</span>
+</button>
+<button class="btn-action" style="background-color: #1976d2; margin-top: 6px;" onclick="hireDoctor()">
+<span>🏥 Нанять доктора (100 HP + защита 5х)</span>
+<span>$80</span>
+</button>
+<button class="btn-action" style="background-color: #f57f17; margin-top: 6px;" onclick="openAuthorityModal()">
+<span>⭐ Улучшить авторитет</span>
+<span>Открыть</span>
+</button>
+<div id="illness-status-text" style="font-size: 13px; margin-top: 10px; font-weight: bold; color: #d32f2f;"></div>
+</div>
+</div>
+<div id="market-tab" class="tab-content">
+<div class="subtabs-container">
+<button class="subtab-btn active" id="subtab-market-goods-btn" onclick="switchMarketSubTab('market-goods-subtab')">🔫 Оружие и Рынок</button>
+<button class="subtab-btn" id="subtab-market-adult-btn" onclick="switchMarketSubTab('market-adult-subtab')">🔞 Фильмы 18+</button>
+<button class="subtab-btn" id="subtab-market-company-btn" onclick="switchMarketSubTab('market-company-subtab')">🏢 Основатель компании</button>
+</div>
+<div id="market-goods-subtab">
+<div class="section-title">🔫 Склад оружия и черный рынок</div>
+<p style="font-size: 11px; color: #555; text-align: left;">Цены на товары меняются каждый ход. Доход идет в <b>🧼 грязные доллары</b>.</p>
+<div style="background: #e0f2f1; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 12px; text-align: left;">
+<div>👤 Продавец: <b id="seller-status">Нет</b></div>
+<div id="seller-timer" style="color: #00796b; font-weight: bold; margin-top: 2px;"></div>
+<button id="hire-seller-btn" class="btn-action" style="margin-top: 6px; background:#00796b;" onclick="hireSeller()">Нанять продавца (10 ходов) — $40</button>
+<div style="display:flex; gap:6px; margin-top:8px;">
+<button id="hire-farmer-btn" class="btn-action" style="flex:1; background:#388e3c; font-size:11px;" onclick="hireStaff('farmer')">👨‍🌾 Фермер ($50, 10х)</button>
+<button id="hire-courier-btn" class="btn-action" style="flex:1; background:#0288d1; font-size:11px;" onclick="hireStaff('courier')">🚴 Курьер ($40, 10х)</button>
+</div>
+<div id="staff-timers" style="font-size:11px; color:#333; margin-top:4px;"></div>
+</div>
+<div class="section-title">🌱 Поля для выращивания травы (4 слота)</div>
+<div class="fields-grid" id="fields-container"></div>
+<div class="section-title">📦 Ваш склад нелегальных товаров</div>
+<button class="btn-action" style="background:#2e7d32; margin-bottom:10px; justify-content:center;" onclick="buySeeds()">
+  🌱 Купить семена травы — $10 (без условий)
+</button>
+<div class="market-container" id="market-container"></div>
+</div>
+<div id="market-adult-subtab" style="display:none;">
+<div class="section-title">🔞 Индустрия фильмов для взрослых</div>
+<p style="font-size: 11px; color: #555; text-align: left;">Снимайте фильмы, набирайте просмотры и инвестируйте их в чистые доллары (7 просмотров = $1).</p>
+<button class="btn-action" style="background:#e91e63; margin-bottom: 12px;" onclick="openMovieSelectModal()">🎬 Снять фильм</button>
+<div id="ph-king-container" style="margin-bottom: 12px;"></div>
+<div id="adult-movie-container"></div>
+</div>
+<div id="market-company-subtab" style="display:none;">
+<div id="company-main-container"></div>
+</div>
+</div>
+<div id="diplomacy-tab" class="tab-content">
+<div class="subtabs-container">
+<button class="subtab-btn active" id="subtab-gangs-btn" onclick="switchSubTab('gangs-subtab')">🥷 Банды</button>
+<button class="subtab-btn" id="subtab-comp-btn" onclick="switchSubTab('competitors-subtab')">🏢 Конкуренты</button>
+</div>
+<div id="gangs-subtab">
+<div class="section-title">🤝 Список банд и контакты</div>
+<p style="font-size: 11px; color: #555; text-align: left;">Нажмите на банду для управления отношениями, просмотра ассортимента или проведения диверсии.</p>
+<div class="gangs-container" id="gangs-container"></div>
+</div>
+<div id="competitors-subtab" style="display:none;">
+<div class="section-title">🏢 Компании-Конкуренты</div>
+<p style="font-size: 11px; color: #555; text-align: left;">Управляйте отношениями с конкурентами.</p>
+<div class="competitors-container" id="competitors-container"></div>
+</div>
+</div>
+<div id="realty-tab" class="tab-content">
+<div class="section-title">🏢 Рынок недвижимости</div>
+<p style="font-size: 11px; color: #555; text-align: left;">Покупка за <b>💵 чистые</b> или <b>🧼 грязные</b>. Нажмите на квартиру для улучшений. Без датчика дыма есть шанс сгореть!</p>
+<div class="realty-container" id="realty-container"></div>
+<div class="section-title">💼 Бизнес (Покупка и Отмыв денег)</div>
+<p style="font-size: 11px; color: #555; text-align: left;">Покупка за <b>🧼 грязные доллары</b>. Внесите грязные доллары (до $500) для отмыва в чистые доллары каждый ход. Улучшения за <b>💵 чистые</b>.</p>
+<div class="business-container" id="business-container"></div>
+</div>
+
+<div id="authority-modal" class="modal">
+<h2 style="color: #f57f17;">⭐ Улучшение авторитета</h2>
+<p style="font-size: 12px; margin-bottom: 10px;" id="authority-modal-text">Вы можете купить каждое улучшение авторитета по 1 разу:</p>
+<button id="btn-upg-egg" style="background: #fbc02d; color:black;" onclick="buyAuthorityUpgrade('egg')">🥚 Золотое яйцо ($3000) — +15% авторитета</button>
+<button id="btn-upg-tram" style="background: #00897b; color:white;" onclick="buyAuthorityUpgrade('tram')">🚃 Трамвай "Украïнка" ($6000) — +35% авторитета</button>
+<button id="btn-upg-plane" style="background: #0288d1; color:white;" onclick="buyAuthorityUpgrade('plane')">✈️ Самолет ($8000) — +50% авторитета</button>
+<button style="background: #78909c; color:white; margin-top: 15px;" onclick="closeModal('authority-modal')">Закрыть</button>
+</div>
+
+<div id="win-president-modal" class="modal">
+<h2 style="color: #00e676;">👑 ПОБЕДА В ИГРЕ!</h2>
+<p style="font-size: 14px; text-align: center; line-height: 1.4; margin: 15px 0;">Вы успешно подтасовали выборы и стали президентом украины! Спасибо что прошли этот позор человечества!!!</p>
+<button style="background: #2e7d32; color:white;" onclick="restartGame()">Начать заново</button>
+</div>
+
+<div id="win-ph-modal" class="modal">
+<h2 style="color: #e91e63;">👑 ПОБЕДА В ИГРЕ!</h2>
+<p style="font-size: 14px; text-align: center; line-height: 1.4; margin: 15px 0;">Ты теперь король пх. Управляй миром через похоть его творцов!!!</p>
+<button style="background: #e91e63; color:white;" onclick="restartGame()">Начать заново</button>
+</div>
+
+<div id="movie-select-modal" class="modal">
+<h2 style="color: #e91e63;">🎬 Выбор актрис для фильма</h2>
+<p style="font-size: 12px; margin-bottom: 10px;">Выберите максимум 2 актрис. Грязные — базовые, чистые — ×2.5 дороже:</p>
+<div id="actresses-list" style="display:flex; flex-direction:column; gap:8px; width:100%; max-width:320px; max-height: 250px; overflow-y: auto;"></div>
+<button style="background: #2e7d32; color:white; margin-top:12px;" onclick="startMovieFilming()">🎥 Начать съемки</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('movie-select-modal')">Отмена</button>
+</div>
+<div id="police-porn-modal" class="modal">
+<h2 style="color: #d32f2f;">🚔 ИВЕНТ: ДЕЛО О РАСПРОСТРАНЕНИИ ПОРНОГРАФИИ!</h2>
+<p style="font-size: 13px; text-align: center;">Полиция зафиксировала факт распространения нелегального 18+ контента!</p>
+<button style="background: #2e7d32; color:white;" onclick="resolvePolicePorn('bribe')">💰 Откуп ($200)</button>
+<button style="background: #c62828; color:white;" onclick="resolvePolicePorn('jail')">👌 Принять (Тюрьма 10 ходов + Бан 18+)</button>
+</div>
+<div id="parents-death-modal" class="modal">
+<h2 style="color: #d32f2f;">🕯️ ИВЕНТ: СМЕРТЬ РОДИТЕЛЕЙ!</h2>
+<p>К сожалению, ваши родители скончались. Вы погрузились в глубокий траур (-35% Счастья).</p>
+<button style="background: #78909c; color:white;" onclick="closeModal('parents-death-modal')">Принять соболезнования</button>
+</div>
+<div id="illness-modal" class="modal">
+<h2 style="color: #7b1fa2;">☣️ ИВЕНТ: БОЛЕЗНЬ!</h2>
+<p style="font-size: 14px; text-align: center; line-height: 1.4; margin: 15px 0;" id="illness-modal-text">
+Вы заболели! Здоровье упало. Каждый ход вы будете терять 10 HP, пока не вылечитесь.
+</p>
+<button style="background: #7b1fa2; color:white;" onclick="resolveIllness()">Принять</button>
+</div>
+<div id="happiness-modal" class="modal">
+<h2 style="color: #00796b;">😊 Регулировка Счастья</h2>
+<p style="font-size: 13px;">Текущее счастье: <b id="modal-happiness-val">50</b> / 100%</p>
+<button style="background: #0288d1; color:white;" onclick="useHappinessOption('antidepressants')">💊 Антидепрессанты ($10) — +5% счастья</button>
+<button style="background: #d84315; color:white;" onclick="useHappinessOption('drink')">🍺 Пить — +10% счастья, -10% здоровья</button>
+<button id="btn-smoke-weed" style="background: #2e7d32; color:white;" onclick="useHappinessOption('weed')">🌿 Курить траву — +10% счастья, -5% здоровья</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('happiness-modal')">Закрыть</button>
+</div>
+<div id="suicide-modal" class="modal">
+<h2 style="color: #d32f2f;">💀 ИВЕНТ: СУИЦИД!</h2>
+<p>Ваше счастье опустилось ниже 10%. Вы совершили суицид.</p>
+<button style="background: #b71c1c; color:white;" onclick="restartGame()">Начать заново</button>
+</div>
+<div id="health-modal" class="modal">
+<h2 style="color: #e53935;">💊 Лечение и Аптечка</h2>
+<p style="font-size: 13px;">Текущее здоровье: <b id="modal-health-val">100</b> / 100 ед.</p>
+<button style="background: #2e7d32; color:white;" onclick="buyMedicine('antibiotics')">💊 Антибиотики ($30) — +40 ед. здоровья</button>
+<button style="background: #d84315; color:white;" onclick="buyMedicine('potion')">🧪 Отвар ($50) — 50% до 100 ед. / 48% -30 ед.</button>
+<button style="background: #7b1fa2; color:white;" onclick="buyMedicine('pills')">💊 Таблетки ($5) — 10% шанс смерти</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('health-modal')">Закрыть</button>
+</div>
+<div id="death-modal" class="modal">
+<h2 style="color: #d32f2f;">💀 ВЫ УМЕРЛИ!</h2>
+<p>Ваше здоровье опустилось до 0 единиц.</p>
+<button style="background: #b71c1c; color:white;" onclick="restartGame()">Начать заново</button>
+</div>
+<div id="police-search-modal" class="modal">
+<h2 style="color: #d32f2f;">🚔 ЖЁСТКИЙ ОБЫСК ПОЛИЦИИ!</h2>
+<p style="font-size: 13px; text-align: center; color: #ffcdd2;">Обыск! Отказ от взятки — <b>заморозка 20 ходов</b>, <b>−40% денег</b>, <b>−35% счастья</b>, <b>−30 HP</b>!</p>
+<button style="background: #2e7d32; color:white;" onclick="resolvePoliceSearch('bribe')">💰 Взятка ($500)</button>
+<button style="background: #c62828; color:white;" onclick="resolvePoliceSearch('okay')">👌 Отказаться (85% риск)</button>
+</div>
+<div id="police-raid-modal" class="modal">
+<h2 style="color: #b71c1c;">🚨 РЕЙД ПОЛИЦИИ!</h2>
+<p style="font-size: 13px; text-align: center; color: #ffcdd2;" id="police-raid-text">Полиция пришла с проверкой!</p>
+<button style="background: #2e7d32; color:white;" onclick="resolvePoliceRaid('bribe')">💰 Откуп ($700)</button>
+<button style="background: #c62828; color:white;" onclick="resolvePoliceRaid('accept')">🤷 Принять (жёсткие последствия)</button>
+</div>
+<div id="tax-audit-modal" class="modal">
+<h2 style="color: #ff9800;">👮 ИВЕНТ: ПРОВЕРКА НАЛОГОВОЙ!</h2>
+<p id="tax-audit-text">К вам пришли с внеплановой налоговой проверкой!</p>
+<button style="background: #0288d1; color:white; width: 100%; margin-top:20px;" onclick="closeModal('tax-audit-modal')">ОК</button>
+</div>
+<div id="criminal-case-modal" class="modal">
+<h2 style="color: #d32f2f;">⚖️ ИВЕНТ: УГОЛОВНОЕ ДЕЛО!</h2>
+<p style="font-size: 13px;">У вас <b>150+ грязных долларов</b>. Откуп <b>$500</b>, отказ — <b>тюрьма 15 ходов</b> + потеря всех грязных!</p>
+<button id="btn-pay-bribe" style="background: #2e7d32; color:white;" onclick="resolveCriminalCase('pay')">Откупиться ($500)</button>
+<button style="background: #c62828; color:white;" onclick="resolveCriminalCase('accept')">Принять последствия</button>
+</div>
+<div id="game-over-modal" class="modal">
+<h2 style="color: #d32f2f;">⚖️ ПОЖИЗНЕННОЕ ЗАКЛЮЧЕНИЕ!</h2>
+<p>Вы приговорены к пожизненному сроку. Это поражение!</p>
+<button style="background: #b71c1c; color:white;" onclick="restartGame()">Начать заново</button>
+</div>
+<div id="gang-action-modal" class="modal">
+<h2 id="gang-modal-title" style="color: #ffca28;">Банда</h2>
+<p style="font-size: 13px;" id="gang-modal-loyalty">Лояльность: 50%</p>
+<p style="font-size: 11px; color: #b2dfdb;" id="gang-modal-rival">Соперник: Нет</p>
+<button style="background: #2e7d32; color:white;" onclick="gangAction('improve')">Улучшать отношения (+5%/ход)</button>
+<button style="background: #c62828; color:white;" onclick="gangAction('worsen')">Ухудшать отношения (-10%/ход)</button>
+<button style="background: #f57f17; color:white;" onclick="gangAction('donate')">Донат ($20 за +20% отношений)</button>
+<button id="gang-buy-btn" style="background: #0277bd; color:white;" onclick="openGangShop()">Закупка оружия и семян</button>
+<button id="gang-sabotage-btn" style="background: #6a1b9a; color:white; display:none;" onclick="performSabotage()">⚡ Провести диверсию</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('gang-action-modal')">Назад</button>
+</div>
+<div id="competitor-action-modal" class="modal">
+<h2 id="comp-modal-title" style="color: #00bcd4;">Компания</h2>
+<p style="font-size: 13px;" id="comp-modal-loyalty">Лояльность: 50%</p>
+<button style="background: #2e7d32; color:white;" onclick="competitorAction('improve')">Улучшать отношения ($90, +5%/ход)</button>
+<button style="background: #c62828; color:white;" onclick="competitorAction('worsen')">Ухудшать отношения (Бесплатно, -5%/ход)</button>
+<button id="comp-buy-btn" style="background: #ff9800; color:white; display:none;" onclick="buyCompetitor()">🛒 Купить компанию (<span id="comp-buy-price">150</span>)</button>
+<button id="comp-sue-btn" style="background: #e91e63; color:white; display:none;" onclick="openLawyerModal()">⚖️ Подать в суд ($10)</button>
+<button id="comp-rob-btn" style="background: #d32f2f; color:white; display:none;" onclick="startRobbery()">🗡️ Ограбить компанию ($10)</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('competitor-action-modal')">Назад</button>
+</div>
+<div id="robber-modal" class="modal">
+<h2 style="color: #ff5252;">🥷 Выбор вора для ограбления</h2>
+<button style="background: #455a64; color:white;" onclick="executeRobbery('biker', 15, 0.20)">🏍️ Питбайкер ($15) — Шанс 20%</button>
+<button style="background: #37474f; color:white;" onclick="executeRobbery('chigurh', 30, 0.40)">✂️ Антон Чигур ($30) — Шанс 40%</button>
+<button style="background: #0288d1; color:white;" onclick="executeRobbery('patron', 50, 0.67)">🐶 Пес патрон ($50) — Шанс 67%</button>
+<button style="background: #b71c1c; color:white;" onclick="executeRobbery('vor', 130, 0.80)">👑 Вор в законе ($130) — Шанс 80%</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('robber-modal')">Отмена</button>
+</div>
+<div id="lawyer-modal" class="modal">
+<h2 style="color: #e91e63;">⚖️ Выбор адвоката</h2>
+<button style="background: #0288d1; color:white;" onclick="sueCompetitor('normal')">Обычный адвокат ($60, Шанс 30%)</button>
+<button style="background: #ff9800; color:white;" onclick="sueCompetitor('saul')">Сол Гудман ($160, Шанс 70%)</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('lawyer-modal')">Отмена</button>
+</div>
+<div id="gang-shop-modal" class="modal">
+<h2 style="color: #00e676;" id="gang-shop-title">🛒 Закупка у банды</h2>
+<p style="font-size: 12px;" id="gang-shop-notice">Приобретайте товары (только за 💵 чистые доллары):</p>
+<div id="gang-shop-locked" style="display:none; background:#c62828; color:white; padding:8px; border-radius:6px; font-size:12px; font-weight:bold; margin-bottom:8px;">
+  🚫 Закупка недоступна
+</div>
+<button id="btn-buy-deagle" style="background: #37474f; color:white;" onclick="buyWeapon('deagle')">Дигл</button>
+<button id="btn-buy-ak47" style="background: #37474f; color:white;" onclick="buyWeapon('ak47')">Калаш</button>
+<button id="btn-buy-grenade" style="background: #37474f; color:white;" onclick="buyWeapon('grenade')">Граната</button>
+<button id="btn-buy-seeds" style="background: #2e7d32; color:white;" onclick="buySeeds()">🌱 Семена травы — $10</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('gang-shop-modal')">Назад</button>
+</div>
+<div id="field-action-modal" class="modal">
+<h3 id="field-modal-title">🌾 Управление полем</h3>
+<p style="font-size: 12px;" id="field-modal-desc">Поле пустое.</p>
+<button id="field-plant-btn" style="background: #2e7d32; color:white; display:none;" onclick="plantSeeds()">Посадить семена ($10)</button>
+<button id="field-harvest-btn" style="background: #f57f17; color:white; display:none;" onclick="harvestField()">Собрать урожай травы</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('field-action-modal')">Назад</button>
+</div>
+<div id="hire-worker-modal" class="modal">
+<h3>👷 Выбор рабочего</h3>
+<p style="font-size: 12px;" id="hire-worker-desc">Выберите рабочий класс:</p>
+<button style="background: #29b6f6; color:black;" onclick="hireWorker('Novice')">👷 Новичок (10х) - <span id="price-novice">$100</span></button>
+<button style="background: #ffa726; color:black;" onclick="hireWorker('Apprentice')">🧑‍🔧 Подмастерье (5х) - <span id="price-apprentice">$150</span></button>
+<button style="background: #ab47bc; color:white;" onclick="hireWorker('Master')">👨‍🏭 Мастер (5х) - <span id="price-master">$250</span></button>
+<button style="background: #78909c; color:white;" onclick="closeModal('hire-worker-modal')">Отмена</button>
+</div>
+<div id="company-worker-modal" class="modal">
+<h3>🪓 Нанять или заменить рабочего компании</h3>
+<p style="font-size: 11px; margin-bottom: 10px;">Выберите рабочий класс (оплата 💵 чистыми или 🧼 грязными):</p>
+<div id="company-worker-options" style="display:flex; flex-direction:column; gap:6px; width:100%; max-width:320px;"></div>
+<button style="background: #78909c; color:white; margin-top:10px;" onclick="closeModal('company-worker-modal')">Отмена</button>
+</div>
+<div id="inspector-limit-modal" class="modal">
+<h2 style="color: #ff9800;">👮 РЫБНАДЗОР!</h2>
+<p>Вы продали больше 4 рыб за один ход!</p>
+<button style="background: #2e7d32; color:white;" onclick="resolveInspector('fine')">Откуп за $250</button>
+<button style="background: #c62828; color:white;" onclick="resolveInspector('seize')">Конфискация и сброс удочки</button>
+</div>
+<div id="robbery-modal" class="modal">
+<h1 style="color: #ff5252;">🥷 ВАС ОГРАБИЛИ!</h1>
+<p>Вы потеряли 85% сбережений, а ваша удочка сломалась до обычной!</p>
+<button style="background: #e53935; color:white;" onclick="closeModal('robbery-modal')">Понятно...</button>
+</div>
+<div id="poison-modal" class="modal">
+<h1 style="color: #8e24aa;">☣️ ОТРАВЛЕНИЕ РЫБЫ!</h1>
+<p>В водоеме произошел выброс отходов!</p>
+<button style="background: #8e24aa; color:white;" onclick="closeModal('poison-modal')">О нет!</button>
+</div>
+<div id="fire-modal" class="modal">
+<h1 style="color: #d32f2f;">🔥 ПОЖАР!</h1>
+<p id="fire-text">Одна из ваших квартир сгорела!</p>
+<button style="background: #b71c1c; color:white;" onclick="closeModal('fire-modal')">Ужас...</button>
+</div>
+<div id="collectors-modal" class="modal">
+<h1 style="color: #d32f2f;">☠️ ИВЕНТ: КОЛЛЕКТОРЫ!</h1>
+<p>Вы не вернули кредит вовремя!</p>
+<button style="background: #e53935; color:white;" onclick="resolveCollectors('debt')">Списать долг</button>
+<button style="background: #d84315; color:white;" onclick="resolveCollectors('assets')">Конфисковать здания</button>
+</div>
+<div id="business-deposit-modal" class="modal">
+<h2 style="color: #00e676;">💼 Загрузка грязных денег</h2>
+<p style="font-size: 12px; text-align: center;">Введите сумму грязных долларов для отмывания (Макс. $500 в бизнесе):</p>
+<input type="number" id="biz-deposit-input" placeholder="Сумма грязных ($)" style="width: 80%; padding: 8px; border-radius: 8px; border: none; text-align: center; font-size: 16px; margin-bottom: 10px;">
+<button style="background: #2e7d32; color:white;" onclick="submitBusinessDeposit()">Внести деньги</button>
+<button style="background: #78909c; color:white;" onclick="closeModal('business-deposit-modal')">Отмена</button>
+</div>
+
+<div id="fish-exchange-modal" class="modal">
+<h2 style="color: #0288d1;">🔄 Обмен рыбы</h2>
+<p style="font-size: 12px; text-align: center; margin-bottom:10px;">Выберите рыбу из инвентаря для обмена на случайную:</p>
+<div id="fish-exchange-list" style="width:100%; max-width:320px; max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+<button style="background: #78909c; color:white; margin-top:10px;" onclick="closeModal('fish-exchange-modal')">Закрыть</button>
+</div>
+
+<div id="war-modal" class="modal">
+<h2 style="color: #d32f2f;">⚔️ ИВЕНТ: ВОЙНА!</h2>
+<p id="war-modal-text" style="text-align:center; font-size:13px;">Началась война! Цены на оружие выросли в 2-2.5 раза.</p>
+<button style="background: #b71c1c; color:white;" onclick="closeModal('war-modal')">Понятно</button>
+</div>
+
+<div id="cartel-war-modal" class="modal">
+<h2 style="color: #ff9800;">🥷 ВОЙНА КАРТЕЛЕЙ</h2>
+<p id="cartel-war-text" style="font-size:13px; text-align:center; line-height:1.4;"></p>
+<div style="background:#333; padding:10px; border-radius:8px; margin:10px 0; font-size:12px; width:100%; max-width:320px;">
+  <div>Оружие у вас: <b id="cartel-war-weapons">0</b></div>
+  <div>Шанс победы при поддержке: <b id="cartel-war-chance">0%</b></div>
+</div>
+<button style="background: #2e7d32; color:white;" onclick="cartelWarSupport()">🛡️ Поддержать оружием</button>
+<button style="background: #c62828; color:white;" onclick="cartelWarIgnore()">😴 Проигнорировать</button>
+</div>
+
+<div id="cartel-donate-modal" class="modal">
+<h2 style="color: #ffca28;">💰 ДОНАТ ОТ КАРТЕЛЯ</h2>
+<p id="cartel-donate-text" style="font-size:13px; text-align:center; line-height:1.4;"></p>
+<div style="background:#333; padding:10px; border-radius:8px; margin:10px 0; font-size:12px; width:100%; max-width:320px;">
+  <div>Дружественная банда: <b id="cartel-donate-gang">—</b></div>
+  <div>Предлагает: <b id="cartel-donate-amount">$0</b></div>
+</div>
+<button style="background: #2e7d32; color:white;" onclick="cartelDonateAccept()">✅ Принять донат</button>
+<button style="background: #c62828; color:white;" onclick="cartelDonateRefuse()">❌ Отказаться</button>
+</div>
+
+<div id="company-robbery-modal" class="modal">
+<h2 style="color: #d32f2f;">🏢 ГРАБЕЖ ОТ КОМПАНИИ!</h2>
+<p id="company-robbery-text" style="font-size:13px; text-align:center; line-height:1.4;"></p>
+<button style="background: #2e7d32; color:white;" onclick="resolveCompanyRobbery('sue')">⚖️ Подать в суд</button>
+<button id="robbery-cartel-btn" style="background: #6a1b9a; color:white;" onclick="resolveCompanyRobbery('cartel')">🥷 Натравить картель ($10, нужно 80+)</button>
+<button style="background: #78909c; color:white;" onclick="resolveCompanyRobbery('ignore')">😴 Проигнорировать</button>
+</div>
+
+<div id="casino-modal" class="modal">
+<h2 style="color: #9c27b0;">🎰 Казино Мелстроя</h2>
+<p style="font-size:12px;">Выберите цвет и сумму ставки (выигрыш ×1.5):</p>
+<div class="roulette-choice">
+  <button id="roulette-red" onclick="spinRoulette('red')">🔴 Красное</button>
+  <button id="roulette-black" onclick="spinRoulette('black')">⚫ Чёрное</button>
+</div>
+<input type="number" id="roulette-bet" placeholder="Ставка ($)" value="50" min="1" style="width:80%; padding:8px; border-radius:8px; border:none; text-align:center; font-size:16px; margin-top:10px;">
+<div id="roulette-result" style="margin-top:10px; font-weight:bold; min-height:24px;"></div>
+<button style="background: #78909c; color:white;" onclick="closeModal('casino-modal')">Закрыть</button>
+</div>
+
+<div id="interpol-gameover-modal" class="modal">
+  <h2 style="color: #ff1744;">🚨 ВАС ВЗЯЛ ИНТЕРПОЛ!</h2>
+  <p style="font-size: 14px; text-align: center; line-height: 1.4; margin: 15px 0;">
+    Интерпол нашёл вас. Это поражение. Казино Мелстроя закрыто навсегда.
+  </p>
+  <button style="background: #b71c1c; color:white;" onclick="restartGame()">Начать заново</button>
+</div>
+
+<div id="promo-modal" class="modal">
+  <h2 style="color: #ffca28;">🎁 Ввод промокода</h2>
+  <p style="font-size: 12px; text-align: center; margin-bottom: 10px;">Введите секретный код, чтобы получить бонус:</p>
+  <input type="text" id="promo-input" placeholder="Промокод" style="width: 80%; padding: 10px; border-radius: 8px; border: none; text-align: center; font-size: 16px; margin-bottom: 10px; text-transform: uppercase;">
+  <div id="promo-result" style="font-weight: bold; min-height: 24px; margin-bottom: 10px;"></div>
+  <button style="background: #2e7d32; color:white;" onclick="applyPromoCode()">✅ Активировать</button>
+  <button style="background: #78909c; color:white;" onclick="closeModal('promo-modal')">Закрыть</button>
+</div>
+
+</div>
+
+<script>
+const TG = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+if (TG) {
+  try {
+    TG.expand();
+    if (TG.setHeaderColor) TG.setHeaderColor('#e0f7fa');
+  } catch (e) { console.log('TG init error', e); }
+}
+
+let balance = 30;
+let dirtyBalance = 0;
+let turnCount = 0;
+let credits = [];
+let collectorsCount = 0;
+let failedCreditsCount = 0;
+let happiness = 50;
+let health = 100;
+let authority = 0;
+let boughtAuthorityUpgrades = { egg: false, tram: false, plane: false };
+let hasBoyfriend = false;
+let boyfriendName = "";
+let boyfriendTurns = 0;
+const boyfriendNames = ["Даня","Кирилл","Макс","Артём","Саша","Влад","Никита","Дима","Егор","Тимур"];
+let hasDoctor = false;
+let doctorName = "";
+let doctorTurns = 0;
+const doctorNames = ["Антон","Владимир","Сергей","Николай","Виктор","Михаил","Андрей","Олег"];
+let isSick = false;
+let hasParentsDied = false;
+let criminalCaseCount = 0;
+let policeFreezeTurns = 0;
+let currentRodIndex = 0;
+const inventorySize = 20;
+let inventory = new Array(inventorySize).fill(null);
+let lockedSlotsCount = 0;
+let inspectorSeizeCount = 0;
+let salesThisTurn = 0;
+let dirtyStockPurchasesThisTurn = 0;
+let dirtyStockViolationCount = 0;
+let failedRobberiesCount = 0;
+let foreignDeposit = { amount: 0, rate: 3, turnsLeft: 0, active: false };
+let bribeFishTurns = 0;
+let bribePoliceTurns = 0;
+let fishCaughtThisTurn = 0;
+let jailTurnsLeft = 0;
+let hasFishShop = false;
+let fishShopLevel = 1;
+let hasHotel = false;
+let hasSalmonFarm = false;
+let salmonFarmTurnsLeft = 0;
+let isShopFrozen = false;
+let hasStation = false;
+let hasBanya = false;
+let hasCasino = false;
+let poisonTurnsLeft = 0;
+let poisonDurationConfig = 8;
+let guardTurns = 0;
+let hasDog = false;
+let oceanIncomeTotal = 0;
+let hasHiredBefore = false;
+let workers = [null, null, null, null];
+let workerLoots = [null, null, null, null];
+let selectedWorkerSlot = null;
+
+let infiniteMoney = false;
+let promoUsed = false;
+
+let eventChanceMultiplier = 1.55;
+let normalDifficulty = false;
+let hardcoreDifficulty = false;
+let difficultyName = "";
+let robberyLossPercent = 0.85;
+let illnessHealthLoss = 0.85;
+let medusaChance = 0.06;
+let warTurnsLeft = 0;
+let warMultiplier = 1;
+let cartelWarOffered = false;
+let cartelDonateOffered = false;
+let soloDonationOffered = false;
+
+let casinoPlaysHistory = [];
+let interpolTriggered = false;
+let interpolTurnsLeft = 0;
+let casinoClosed = false;
+let interpolActive = false;
+
+let bank = { amount: 0, turnsLeft: 0, active: false };
+
+let dirtyActionsThisTurn = 0;
+const DIRTY_ACTIONS_THRESHOLD = 5;
+
+let pendingMovieCosts = null;
+let selectedRealtyIndex = null;
+
+let fireChance = 0.15;
+let policeRaidStart = 10;
+let policeRaidInterval = 5;
+let pornRate = 7;
+let weaponMarkup = 1.3;
+
+const treasuresList = [
+  { name: "Голландский штурвал", icon: "🧭", price: 1500 },
+  { name: "Золотой якорь", icon: "⚓", price: 1200 },
+  { name: "Амфора с монетами", icon: "🏺", price: 900 },
+  { name: "Изумрудный перстень", icon: "💎", price: 700 },
+  { name: "Сундук дублонов", icon: "🪙", price: 600 },
+  { name: "Клык мегалодона", icon: "🦷", price: 500 }
+];
+const TREASURE_CHANCE = 0.02;
+
+let company = null;
+let selectedCompanyWorkerSlot = null;
+const companyWoodTypes = [
+  { name: "Клен", basePrice: 100, currentPrice: 100 },
+  { name: "Береза", basePrice: 150, currentPrice: 150 },
+  { name: "Сосна", basePrice: 200, currentPrice: 200 },
+  { name: "Кедр", basePrice: 300, currentPrice: 300 },
+  { name: "Кипарис", basePrice: 350, currentPrice: 350 },
+  { name: "Ель", basePrice: 400, currentPrice: 400 },
+  { name: "Сосна 450", basePrice: 450, currentPrice: 450 },
+  { name: "Дуб", basePrice: 500, currentPrice: 500 }
+];
+
+let weapons = {
+deagle: { name: 'Дигл', count: 0 },
+ak47: { name: 'Калаш', count: 0 },
+grenade: { name: 'Граната', count: 0 },
+seeds: { name: 'Семена травы', count: 0 },
+weed: { name: 'Трава', count: 0 }
+};
+
+const weaponBasePrices = { deagle: 40, ak47: 50, grenade: 60, weed: 200 };
+let weaponPrices = { deagle: 40, ak47: 50, grenade: 60, weed: 200 };
+
+let sellerTurns = 0;
+let farmerTurns = 0;
+let courierTurns = 0;
+let weaponIncomeTotal = 0;
+let weaponPoliceCaughtCount = 0;
+const actressesData = [
+{ id: 'ugly', name: 'Некрасивая', price: 130, minViews: 800, maxViews: 1300 },
+{ id: 'medium', name: 'Средняя', price: 180, minViews: 1400, maxViews: 2300 },
+{ id: 'pretty', name: 'Красивая', price: 250, minViews: 2500, maxViews: 3200 },
+{ id: 'busty', name: 'Большие буфера', price: 290, minViews: 3200, maxViews: 4800 }
+];
+let selectedActresses = [];
+let activeMovie = null;
+let moviesFilmedTotal = 0;
+let policePornCooldown = 0;
+let isAdultMoviesBanned = false;
+let fields = [
+{ status: 'empty', turnsLeft: 0 },
+{ status: 'empty', turnsLeft: 0 },
+{ status: 'empty', turnsLeft: 0 },
+{ status: 'empty', turnsLeft: 0 }
+];
+let selectedFieldIndex = null;
+let gangs = [
+{ id: 'chekuncy', name: 'Чекунцы', loyalty: 50, action: null, rivalId: null, weaponPrices: { deagle: 12, ak47: 18, grenade: 22 } },
+{ id: 'selskie', name: 'Сельские', loyalty: 50, action: null, rivalId: null, weaponPrices: { deagle: 10, ak47: 15, grenade: 25 } },
+{ id: 'musor', name: 'Мусор дроп', loyalty: 50, action: null, rivalId: null, weaponPrices: { deagle: 15, ak47: 22, grenade: 35 } },
+{ id: 'litvincy', name: 'Литвинцы', loyalty: 50, action: null, rivalId: null, weaponPrices: { deagle: 20, ak47: 28, grenade: 30 } }
+];
+let selectedGangIndex = null;
+let competitors = [
+{ id: 'puchina', name: 'Пучина', loyalty: 50, action: null, buyPrice: Math.floor(Math.random() * 101) + 100, lockTurns: 0 },
+{ id: 'vodolazy', name: 'Водолазы', loyalty: 50, action: null, buyPrice: Math.floor(Math.random() * 101) + 100, lockTurns: 0 },
+{ id: 'burmalda', name: 'Бурмалда', loyalty: 50, action: null, buyPrice: Math.floor(Math.random() * 101) + 100, lockTurns: 0 }
+];
+let selectedCompetitorIndex = null;
+
+function initRivals() {
+let ids = gangs.map(g => g.id);
+gangs.forEach(gang => {
+let possibleRivals = ids.filter(id => id !== gang.id);
+if (possibleRivals.length > 0) {
+gang.rivalId = possibleRivals[Math.floor(Math.random() * possibleRivals.length)];
+} else {
+gang.rivalId = null;
+}
+gang.weaponPrices = {
+deagle: Math.floor(Math.random() * 26) + 10,
+ak47: Math.floor(Math.random() * 26) + 10,
+grenade: Math.floor(Math.random() * 26) + 10
+};
+});
+}
+
+function checkAndRepairRivals() {
+let ids = gangs.map(g => g.id);
+gangs.forEach(gang => {
+if (gang.rivalId && !ids.includes(gang.rivalId)) {
+gang.rivalId = null;
+}
+if (!gang.rivalId) {
+let possibleRivals = ids.filter(id => id !== gang.id);
+if (possibleRivals.length > 0) {
+gang.rivalId = possibleRivals[Math.floor(Math.random() * possibleRivals.length)];
+} else {
+gang.rivalId = null;
+}
+}
+});
+}
+
+function getGangRival(gang) {
+if (!gang) return null;
+checkAndRepairRivals();
+return gangs.find(g => g.id === gang.rivalId) || null;
+}
+initRivals();
+
+let realties = [
+{ id: 'murino', name: 'Комната в Мурино', price: 150, currentPrice: 150, owned: 0, cooldown: 0, boughtTurn: -1, boughtTurns: [], upgrades: { smoke: false, paint: false, furniture: false } },
+{ id: 'komenda', name: 'Студия на Коменде', price: 300, currentPrice: 300, owned: 0, cooldown: 0, boughtTurn: -1, boughtTurns: [], upgrades: { smoke: false, paint: false, furniture: false } },
+{ id: 'ohta', name: 'Двушка на Охте', price: 390, currentPrice: 390, owned: 0, cooldown: 0, boughtTurn: -1, boughtTurns: [], upgrades: { smoke: false, paint: false, furniture: false } },
+{ id: 'vaska', name: 'Трешка на Ваське', price: 450, currentPrice: 450, owned: 0, cooldown: 0, boughtTurn: -1, boughtTurns: [], upgrades: { smoke: false, paint: false, furniture: false } },
+{ id: 'nevsky', name: 'Апартаменты на Невском', price: 870, currentPrice: 870, owned: 0, cooldown: 0, boughtTurn: -1, boughtTurns: [], upgrades: { smoke: false, paint: false, furniture: false } },
+{ id: 'pushkin', name: 'Дом в Пушкине', price: 900, currentPrice: 900, owned: 0, cooldown: 0, boughtTurn: -1, boughtTurns: [], upgrades: { smoke: false, paint: false, furniture: false } }
+];
+let businesses = [
+{ id: 'pivnukha', name: '🍺 Пивнуха', price: Math.floor(Math.random() * 31) + 40, owned: false, level: 1, dirtyLoaded: 0 },
+{ id: 'dog_grooming', name: '🐕 Стрижка собак', price: Math.floor(Math.random() * 31) + 40, owned: false, level: 1, dirtyLoaded: 0 },
+{ id: 'peru_carrots', name: '🥕 Морковные поля в Перу', price: Math.floor(Math.random() * 31) + 40, owned: false, level: 1, dirtyLoaded: 0 }
+];
+
+const businessLaunderLevels = [
+  { level: 1, income: 10 },
+  { level: 2, income: 20 },
+  { level: 3, income: 50 },
+  { level: 4, income: 75 },
+  { level: 5, income: 100 }
+];
+
+function getBusinessUpgradeCost(currentLevel) {
+  let cost = 30;
+  for (let i = 1; i < currentLevel; i++) {
+    cost = Math.round(cost * 1.2);
+  }
+  return cost;
+}
+
+let activeBusinessForModal = null;
+let stocks = [
+{ id: 'les', name: 'ЛесПром', price: Math.floor(Math.random() * 31) + 20, owned: 0, trend: 1, boughtTurn: -1, boughtTurns: [] },
+{ id: 'micro', name: 'МикроволновкиРф', price: Math.floor(Math.random() * 31) + 20, owned: 0, trend: 1, boughtTurn: -1, boughtTurns: [] },
+{ id: 'kazakh', name: 'КазахсЭирлайнс', price: Math.floor(Math.random() * 31) + 20, owned: 0, trend: 1, boughtTurn: -1, boughtTurns: [] },
+{ id: 'ibanko', name: 'ООО "Ибанько"', price: Math.floor(Math.random() * 31) + 20, owned: 0, trend: 1, boughtTurn: -1, boughtTurns: [] }
+];
+
+const workerTypes = {
+'Novice': { name: 'Новичок', emoji: '👷', cost: 100, turns: 10, chance: 5 },
+'Apprentice': { name: 'Подмастерье', emoji: '🧑‍🔧', cost: 150, turns: 5, chance: 15 },
+'Master': { name: 'Мастер', emoji: '👨‍🏭', cost: 250, turns: 5, chance: 25 }
+};
+const rareFishList = [
+{ name: "Барракуда", icon: "🐟", price: 100 },
+{ name: "Группер", icon: "🐠", price: 100 },
+{ name: "Скат", icon: "🪼", price: 100 }
+];
+const oceanFishList = [
+{ name: "Акула", icon: "🦈", price: 90 },
+{ name: "Марлин", icon: "🗡️", price: 150 }
+];
+const rods = [
+{ name: "Обычная", price: 0, bonus: 0 },
+{ name: "Нормальная", price: 50, bonus: 5 },
+{ name: "Улучшенная", price: 200, bonus: 10 },
+{ name: "Из голды", price: 550, bonus: 15 },
+{ name: "Спиннинг", price: 1000, bonus: 20 }
+];
+const itemsList = [
+{ name: "Лягушка", icon: "🐸", basePrice: 3, currentPrice: 3, baseChance: 90 },
+{ name: "Толстолобик", icon: "🐟", basePrice: 5, currentPrice: 5, baseChance: 90 },
+{ name: "Сапог", icon: "👢", basePrice: 8, currentPrice: 8, baseChance: 18 },
+{ name: "Карась", icon: "🐟", basePrice: 10, currentPrice: 10, baseChance: 28 },
+{ name: "Плотва", icon: "🐟", basePrice: 15, currentPrice: 15, baseChance: 10 },
+{ name: "Окунь", icon: "🐠", basePrice: 25, currentPrice: 25, baseChance: 10 },
+{ name: "Рак", icon: "🦞", basePrice: 25, currentPrice: 25, baseChance: 5 },
+{ name: "Карп", icon: "🐡", basePrice: 20, currentPrice: 20, baseChance: 10 },
+{ name: "Щука", icon: "🐊", basePrice: 40, currentPrice: 40, baseChance: 0.8 },
+{ name: "Судак", icon: "🐟", basePrice: 45, currentPrice: 45, baseChance: 0.6 },
+{ name: "Угорь", icon: "🐍", basePrice: 60, currentPrice: 60, baseChance: 0.4 },
+{ name: "Сом", icon: "🐋", basePrice: 70, currentPrice: 70, baseChance: 0.3 }
+];
+
+const fishWeightMultipliers = {
+  normal: {
+    'Лягушка': 1, 'Толстолобик': 1, 'Сапог': 1,
+    'Карась': 8, 'Плотва': 8, 'Окунь': 3, 'Рак': 3, 'Карп': 3,
+    'Щука': 2.5, 'Судак': 2.5, 'Угорь': 2, 'Сом': 2
+  },
+  hardcore: {
+    'Лягушка': 1, 'Толстолобик': 1, 'Сапог': 1,
+    'Карась': 1.5, 'Плотва': 1.5, 'Окунь': 1.2, 'Рак': 1.2, 'Карп': 1.2,
+    'Щука': 1.0, 'Судак': 1.0, 'Угорь': 0.9, 'Сом': 0.9
+  }
+};
+
+function showNotification(msg) {
+const el = document.getElementById('notification');
+if (el) {
+el.innerText = msg;
+setTimeout(() => { if (el.innerText === msg) el.innerText = ''; }, 3000);
+}
+}
+
+function closeModal(id) {
+const m = document.getElementById(id);
+if (m) m.style.display = 'none';
+}
+
+function isInterpolBlocking() {
+  return interpolActive;
+}
+
+function interpolBlockMessage() {
+  showNotification("⚠️ Сначала разберитесь с Интерполом!");
+}
+
+function registerDirtyAction() {
+  if (isInterpolBlocking()) { interpolBlockMessage(); return false; }
+  dirtyActionsThisTurn++;
+  if (dirtyActionsThisTurn > DIRTY_ACTIONS_THRESHOLD && bribePoliceTurns === 0) {
+    if (Math.random() < 0.8) {
+      document.getElementById('police-search-modal').style.display = 'flex';
+    }
+  }
+  updateDirtyActionsDisplay();
+  return true;
+}
+
+function updateDirtyActionsDisplay() {
+  let el = document.getElementById('dirty-actions-info');
+  if (el) {
+    if (dirtyActionsThisTurn > 0) {
+      el.innerText = `🧼 Операций с грязью за ход: ${dirtyActionsThisTurn} / ${DIRTY_ACTIONS_THRESHOLD}`;
+      el.style.color = dirtyActionsThisTurn > DIRTY_ACTIONS_THRESHOLD ? '#ff5252' : '#ff8a65';
+    } else {
+      el.innerText = '';
+    }
+  }
+}
+
+function damageHealth(amount, reason) {
+  if (hasDoctor && amount > 0) {
+    showNotification(`🩺 Доктор ${doctorName} не даёт здоровью упасть!`);
+    return;
+  }
+  health = Math.max(0, health - amount);
+  if (health <= 0) document.getElementById('death-modal').style.display = 'flex';
+}
+
+function changeHappiness(delta) {
+if (hasBoyfriend && delta < 0) {
+showNotification(`🛡️ ${boyfriendName} оберегает вас от падения счастья!`);
+return;
+}
+happiness = Math.max(0, Math.min(100, happiness + delta));
+if (happiness < 10) {
+document.getElementById('suicide-modal').style.display = 'flex';
+}
+updateUI();
+}
+
+function buyBoyfriend() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (balance >= 100) {
+balance -= 100;
+hasBoyfriend = true;
+boyfriendName = boyfriendNames[Math.floor(Math.random() * boyfriendNames.length)];
+boyfriendTurns = 0;
+showNotification(`👨‍❤️‍👨 Вы нашли парня: ${boyfriendName}! Счастье больше не падает.`);
+updateUI();
+} else {
+showNotification("Недостаточно средств ($100)!");
+}
+}
+
+function hireDoctor() {
+  if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+  if (hasDoctor) { showNotification(`Доктор ${doctorName} уже работает (${doctorTurns} ход.)!`); return; }
+  if (balance < 80) { showNotification("Недостаточно средств ($80)!"); return; }
+  balance -= 80;
+  health = 100;
+  isSick = false;
+  hasDoctor = true;
+  doctorName = doctorNames[Math.floor(Math.random() * doctorNames.length)];
+  doctorTurns = 5;
+  showNotification(`🏥 Нанят доктор ${doctorName}! HP=100, защита на 5 ходов.`);
+  updateUI();
+  autoSave();
+}
+
+function openAuthorityModal() {
+if (boughtAuthorityUpgrades.egg && boughtAuthorityUpgrades.tram && boughtAuthorityUpgrades.plane) {
+showNotification("Вы уже купили все улучшения авторитета!");
+return;
+}
+document.getElementById('authority-modal').style.display = 'flex';
+}
+
+function buyAuthorityUpgrade(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (boughtAuthorityUpgrades[type]) { showNotification("Вы уже купили это улучшение!"); return; }
+
+let cost = 0;
+let gain = 0;
+let title = "";
+
+if (type === 'egg') { cost = 3000; gain = 15; title = "Золотое яйцо"; }
+else if (type === 'tram') { cost = 6000; gain = 35; title = 'Трамвай "Украïнка"'; }
+else if (type === 'plane') { cost = 8000; gain = 50; title = "Самолет"; }
+
+if (balance >= cost) {
+balance -= cost;
+authority = Math.min(100, authority + gain);
+boughtAuthorityUpgrades[type] = true;
+closeModal('authority-modal');
+showNotification(`Куплен ${title}! Авторитет +${gain}%.`);
+updateUI();
+} else {
+showNotification(`Недостаточно средств ($${cost})!`);
+}
+}
+
+function bribeElections() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (authority < 100) { showNotification("Нужно 100% авторитета!"); return; }
+if (balance >= 5000) {
+balance -= 5000;
+document.getElementById('win-president-modal').style.display = 'flex';
+} else {
+showNotification("Недостаточно долларов ($5000)!");
+}
+}
+
+function winPhKing() {
+document.getElementById('win-ph-modal').style.display = 'flex';
+}
+
+function openHappinessModal() {
+document.getElementById('modal-happiness-val').innerText = happiness;
+let weedBtn = document.getElementById('btn-smoke-weed');
+if (weapons.weed.count > 0) {
+weedBtn.disabled = false;
+weedBtn.style.opacity = '1';
+} else {
+weedBtn.disabled = true;
+weedBtn.style.opacity = '0.5';
+}
+document.getElementById('happiness-modal').style.display = 'flex';
+}
+
+function useHappinessOption(option) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (option === 'antidepressants') {
+if (balance >= 10) {
+balance -= 10;
+changeHappiness(5);
+showNotification("+5% счастья!");
+} else {
+showNotification("Недостаточно ($10)!");
+}
+} else if (option === 'drink') {
+changeHappiness(10);
+damageHealth(10, "алкоголь");
+showNotification("Выпили (+10% счастья, -10% здоровья)!");
+closeModal('happiness-modal');
+} else if (option === 'weed') {
+if (weapons.weed.count > 0) {
+weapons.weed.count--;
+changeHappiness(10);
+damageHealth(5, "трава");
+showNotification("Покурили (+10% счастья, -5% здоровья)!");
+closeModal('happiness-modal');
+} else {
+showNotification("Нет травы!");
+}
+}
+updateUI();
+}
+
+function resolveIllness() {
+closeModal('illness-modal');
+updateUI();
+}
+
+function tryTreasureCatch() {
+  if (Math.random() < TREASURE_CHANCE) {
+    return treasuresList[Math.floor(Math.random() * treasuresList.length)];
+  }
+  return null;
+}
+
+function updateWorkers() {
+workers.forEach((worker, i) => {
+if (!worker) return;
+if (!workerLoots[i]) {
+let treasure = tryTreasureCatch();
+let caughtItem = null;
+if (treasure) {
+  caughtItem = { name: treasure.name, icon: treasure.icon, price: treasure.price, isTreasure: true };
+  showNotification(`💎 РАБОЧИЙ НАШЁЛ: ${treasure.name} ($${treasure.price})!`);
+} else {
+  let isRare = Math.random() * 100 < worker.chance;
+  if (isRare) {
+    let rFish = rareFishList[Math.floor(Math.random() * rareFishList.length)];
+    caughtItem = { name: rFish.name, icon: rFish.icon, price: rFish.price, isRare: true };
+  } else {
+    let totalWeight = itemsList.reduce((sum, item) => sum + getItemWeight(item), 0);
+    let rand = Math.random() * totalWeight;
+    let cumulative = 0;
+    let selectedItem = itemsList[0];
+    for (let item of itemsList) {
+      cumulative += getItemWeight(item);
+      if (rand <= cumulative) { selectedItem = item; break; }
+    }
+    let price = selectedItem.currentPrice;
+    if (poisonTurnsLeft > 0) price = Math.round(price * 0.6);
+    caughtItem = { name: selectedItem.name, icon: selectedItem.icon, price: price };
+  }
+}
+workerLoots[i] = caughtItem;
+}
+worker.turnsLeft--;
+if (worker.turnsLeft <= 0) {
+workers[i] = null;
+showNotification(`Контракт рабочего #${i + 1} закончился!`);
+}
+});
+}
+
+function updatePrices() {
+itemsList.forEach(item => { item.currentPrice = item.basePrice; });
+updateWeaponPrices();
+}
+
+function updateWeaponPrices() {
+Object.keys(weaponBasePrices).forEach(key => {
+let base = weaponBasePrices[key];
+weaponPrices[key] = Math.round(base * weaponMarkup * (0.9 + Math.random() * 0.2));
+if (warTurnsLeft > 0) {
+  weaponPrices[key] = Math.round(weaponPrices[key] * warMultiplier);
+}
+});
+}
+
+function checkInterpolTrigger() {
+  if (interpolTriggered || casinoClosed) return;
+  if (turnCount !== 10) return;
+  if (casinoPlaysHistory.length < 5) return;
+  interpolTriggered = true;
+  interpolActive = true;
+  interpolTurnsLeft = 3;
+  showNotification("🚨 РОЗЫСК ИНТЕРПОЛА! У вас 3 хода.");
+  updateUI();
+}
+
+function updateInterpolDisplay() {
+  let panel = document.getElementById('interpol-panel');
+  let turnsUi = document.getElementById('interpol-turns-ui');
+  if (!panel) return;
+  if (interpolActive) {
+    panel.classList.add('visible');
+    if (turnsUi) turnsUi.innerText = interpolTurnsLeft;
+  } else {
+    panel.classList.remove('visible');
+  }
+}
+
+function interpolLieLow() {
+  if (!interpolActive) return;
+  if (Math.random() < 0.60) {
+    interpolActive = false;
+    interpolTurnsLeft = 0;
+    casinoClosed = true;
+    showNotification("🕊️ Вы легли на дно! Казино закрыто.");
+    updateUI();
+    autoSave();
+  } else {
+    interpolGameOver();
+  }
+}
+
+function interpolSurrender() {
+  if (!interpolActive) return;
+  interpolGameOver();
+}
+
+function interpolGameOver() {
+  interpolActive = false;
+  casinoClosed = true;
+  document.getElementById('interpol-gameover-modal').style.display = 'flex';
+}
+
+function openBankDeposit() {
+  if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+  if (bank.active) { showNotification("Ячейка уже открыта!"); return; }
+  let input = document.getElementById('bank-input');
+  let amt = parseInt(input.value);
+  if (isNaN(amt) || amt <= 0 || balance < amt) { showNotification("Недостаточно средств!"); return; }
+  balance -= amt;
+  bank.amount = amt;
+  bank.turnsLeft = 10;
+  bank.active = true;
+  input.value = '';
+  showNotification(`🏦 Положили $${amt}. Забрать через 10 ходов.`);
+  updateUI();
+  autoSave();
+}
+
+function withdrawBank() {
+  if (!bank.active || bank.turnsLeft > 0) return;
+  balance += bank.amount;
+  showNotification(`💸 Забрали $${bank.amount}!`);
+  bank = { amount: 0, turnsLeft: 0, active: false };
+  updateUI();
+  autoSave();
+}
+
+function checkRealtyFire() {
+  realties.forEach((r, i) => {
+    if (r.owned <= 0) return;
+    if (r.upgrades && r.upgrades.smoke) return;
+    if (Math.random() < fireChance) {
+      r.owned--;
+      document.getElementById('fire-text').innerText = `🔥 Квартира "${r.name}" сгорела! Не было датчика дыма.`;
+      document.getElementById('fire-modal').style.display = 'flex';
+    }
+  });
+}
+
+function checkPoliceRaid() {
+  if (turnCount < policeRaidStart) return;
+  if ((turnCount - policeRaidStart) % policeRaidInterval !== 0) return;
+  let hasDirtyActivity = dirtyBalance > 0 || dirtyActionsThisTurn > 0;
+  if (!hasDirtyActivity) return;
+  document.getElementById('police-raid-text').innerText = `Полиция нагрянула с проверкой! У вас грязные: $${dirtyBalance}.`;
+  document.getElementById('police-raid-modal').style.display = 'flex';
+}
+
+function resolvePoliceRaid(choice) {
+  closeModal('police-raid-modal');
+  if (choice === 'bribe') {
+    if (balance >= 700) { balance -= 700; showNotification("Откуп $700. Полиция ушла."); }
+    else if (dirtyBalance >= 700) { dirtyBalance -= 700; showNotification("Откуп $700 грязными. Полиция ушла."); }
+    else {
+      showNotification("Не хватило! Применяются последствия...");
+      policeRaidConsequences();
+    }
+  } else {
+    policeRaidConsequences();
+  }
+  updateUI();
+  autoSave();
+}
+
+function policeRaidConsequences() {
+  policeFreezeTurns = 20;
+  let moneyLost = Math.round(balance * 0.4);
+  let dirtyLost = Math.round(dirtyBalance * 0.5);
+  balance = Math.max(0, balance - moneyLost);
+  dirtyBalance = Math.max(0, dirtyBalance - dirtyLost);
+  happiness = Math.max(0, happiness - 35);
+  damageHealth(30, "рейд");
+  showNotification(`🚨 РЕЙД! -$${moneyLost} чистых, -$${dirtyLost} грязных, -35% счастья, -30 HP, заморозка 20х!`);
+  if (happiness < 10) document.getElementById('suicide-modal').style.display = 'flex';
+}
+
+function nextTurn() {
+if (jailTurnsLeft > 0) {
+jailTurnsLeft--;
+showNotification(`Обезьянник! Осталось: ${jailTurnsLeft}`);
+updateUI();
+return;
+}
+
+if (interpolActive) {
+  interpolTurnsLeft--;
+  if (interpolTurnsLeft <= 0) {
+    interpolGameOver();
+    return;
+  } else {
+    showNotification(`🚨 Интерпол! Осталось: ${interpolTurnsLeft}`);
+  }
+}
+
+if (balance >= 5) { balance -= 5; }
+turnCount++;
+fishCaughtThisTurn = 0;
+salesThisTurn = 0;
+dirtyStockPurchasesThisTurn = 0;
+dirtyActionsThisTurn = 0;
+
+if (hasDoctor && doctorTurns > 0) {
+  doctorTurns--;
+  if (doctorTurns === 0) {
+    showNotification(`🩺 Доктор ${doctorName} закончил работу.`);
+    hasDoctor = false;
+    doctorName = "";
+  }
+}
+
+if (bank.active && bank.turnsLeft > 0) {
+  bank.turnsLeft--;
+  if (bank.turnsLeft === 0) {
+    showNotification(`🏦 Срок истёк! Можно забрать $${bank.amount}.`);
+  }
+}
+
+if (poisonTurnsLeft > 0) {
+  poisonTurnsLeft--;
+  if (poisonTurnsLeft === 0) {
+    showNotification("💧 Вода очистилась!");
+    updatePrices();
+  }
+}
+
+if (warTurnsLeft > 0) {
+  warTurnsLeft--;
+  if (warTurnsLeft === 0) {
+    warMultiplier = 1;
+    showNotification("🕊️ Война закончилась!");
+  }
+}
+
+if (warTurnsLeft === 0 && turnCount >= 8 && Math.random() < 0.015 * eventChanceMultiplier) {
+  warTurnsLeft = 3 + Math.floor(Math.random() * 3);
+  warMultiplier = 2 + Math.random() * 0.5;
+  document.getElementById('war-modal-text').innerText = `Война! Цены ×${warMultiplier.toFixed(2)} на ${warTurnsLeft} ходов.`;
+  document.getElementById('war-modal').style.display = 'flex';
+  updateWeaponPrices();
+}
+
+if (!cartelDonateOffered && turnCount >= 10) {
+  let friendlyGangs = gangs.filter(g => g.loyalty >= 80);
+  if (friendlyGangs.length > 0 && Math.random() < 0.12 * eventChanceMultiplier) {
+    cartelDonateOffered = true;
+    let friend = friendlyGangs[Math.floor(Math.random() * friendlyGangs.length)];
+    let donateAmount = 150 + Math.floor(Math.random() * 351);
+    window._cartelDonateData = { gang: friend, amount: donateAmount };
+    document.getElementById('cartel-donate-text').innerText = `${friend.name} предлагают финансовую поддержку!`;
+    document.getElementById('cartel-donate-gang').innerText = friend.name;
+    document.getElementById('cartel-donate-amount').innerText = '$' + donateAmount;
+    document.getElementById('cartel-donate-modal').style.display = 'flex';
+  }
+}
+
+if (!cartelWarOffered && turnCount >= 15) {
+  let friendlyGangs = gangs.filter(g => g.loyalty >= 80);
+  if (friendlyGangs.length > 0 && Math.random() < 0.10 * eventChanceMultiplier) {
+    cartelWarOffered = true;
+    let friend = friendlyGangs[Math.floor(Math.random() * friendlyGangs.length)];
+    let rival = getGangRival(friend);
+    if (rival) {
+      window._cartelWarData = { friend: friend, rival: rival };
+      let totalWeapons = weapons.deagle.count + weapons.ak47.count + weapons.grenade.count;
+      let chance = Math.min(95, 20 + totalWeapons * 5);
+      document.getElementById('cartel-war-text').innerText = `${friend.name} атакован ${rival.name}! Помогите.`;
+      document.getElementById('cartel-war-weapons').innerText = totalWeapons;
+      document.getElementById('cartel-war-chance').innerText = chance + '%';
+      document.getElementById('cartel-war-modal').style.display = 'flex';
+    }
+  }
+}
+
+if (turnCount >= 15 && Math.random() < 0.02 * eventChanceMultiplier) {
+  let names = ['Пучина', 'Водолазы', 'Бурмалда', 'ЛесПром', 'КазахсЭирлайнс'];
+  let companyName = names[Math.floor(Math.random() * names.length)];
+  let stolen = 70 + Math.floor(Math.random() * 131);
+  if (balance >= stolen) { balance -= stolen; }
+  else { stolen = balance; balance = 0; }
+  window._companyRobberyData = { name: companyName, amount: stolen };
+  document.getElementById('company-robbery-text').innerText = `Компания "${companyName}" ограбила вас на $${stolen}!`;
+  let cartelBtn = document.getElementById('robbery-cartel-btn');
+  let friendlyGangs = gangs.filter(g => g.loyalty >= 80);
+  cartelBtn.style.display = friendlyGangs.length > 0 ? 'block' : 'none';
+  document.getElementById('company-robbery-modal').style.display = 'flex';
+}
+
+if (sellerTurns > 0) {
+let sellableKeys = ['deagle', 'ak47', 'grenade', 'weed'].filter(k => weapons[k].count > 0);
+if (sellableKeys.length > 0) {
+let key = sellableKeys[Math.floor(Math.random() * sellableKeys.length)];
+weapons[key].count--;
+let price = weaponPrices[key];
+dirtyBalance += price;
+weaponIncomeTotal += price;
+dirtyActionsThisTurn++;
+showNotification(`Продавец продал ${weapons[key].name} за $${price}!`);
+}
+}
+
+if (hasBoyfriend) {
+boyfriendTurns++;
+if (boyfriendTurns > 10) {
+if (Math.random() < 0.30) {
+showNotification(`💔 ${boyfriendName} бросил вас!`);
+hasBoyfriend = false;
+boyfriendName = "";
+boyfriendTurns = 0;
+}
+}
+}
+
+if (!hasParentsDied && Math.random() < 0.13 * eventChanceMultiplier) {
+hasParentsDied = true;
+document.getElementById('parents-death-modal').style.display = 'flex';
+changeHappiness(-35);
+}
+
+if (turnCount >= 10 && turnCount % 10 === 0 && authority < 15) {
+let auditText = "Налоговая проверка!";
+if (Math.random() < 0.55) {
+let fine = 80;
+if (balance >= fine) { balance -= fine; }
+else { dirtyBalance = Math.max(0, dirtyBalance - fine); }
+auditText = "Налоговая проверка! Штраф $80.";
+} else {
+auditText = "Налоговая без нарушений!";
+}
+changeHappiness(-15);
+document.getElementById('tax-audit-text').innerText = auditText;
+document.getElementById('tax-audit-modal').style.display = 'flex';
+}
+
+if (bribeFishTurns > 0) bribeFishTurns--;
+if (bribePoliceTurns > 0) bribePoliceTurns--;
+if (guardTurns > 0) guardTurns--;
+if (sellerTurns > 0) sellerTurns--;
+if (farmerTurns > 0) farmerTurns--;
+if (courierTurns > 0) courierTurns--;
+if (policeFreezeTurns > 0) policeFreezeTurns--;
+if (policePornCooldown > 0) policePornCooldown--;
+
+if (authority < 50 && moviesFilmedTotal >= 1 && policePornCooldown === 0 && !isAdultMoviesBanned && Math.random() < 0.12 * eventChanceMultiplier) {
+document.getElementById('police-porn-modal').style.display = 'flex';
+}
+
+if (activeMovie && activeMovie.status === 'filming') {
+activeMovie.turnsLeft--;
+if (activeMovie.turnsLeft <= 0) {
+activeMovie.status = 'ready';
+activeMovie.views = Math.floor(Math.random() * (activeMovie.maxViews - activeMovie.minViews + 1)) + activeMovie.minViews;
+showNotification("🎬 Фильм снят!");
+}
+}
+
+if (hasFishShop && !isShopFrozen) { balance += 5; }
+
+businesses.forEach(b => {
+  if (b.owned && b.dirtyLoaded > 0) {
+    let levelData = businessLaunderLevels.find(l => l.level === b.level) || businessLaunderLevels[0];
+    let launderAmount = Math.min(b.dirtyLoaded, levelData.income);
+    b.dirtyLoaded -= launderAmount;
+    balance += launderAmount;
+  }
+});
+
+let totalStocksOwned = stocks.reduce((s, st) => s + st.owned, 0);
+if (totalStocksOwned > 2) {
+let dividends = 0;
+stocks.forEach(st => { if (st.owned > 0) dividends += Math.max(1, Math.floor(st.price * 0.03 * st.owned)); });
+if (dividends > 0) { balance += dividends; showNotification(`📈 Дивиденды: +$${dividends}!`); }
+}
+
+if (hasHotel && turnCount % 3 === 0) { balance += 30; showNotification("🏨 Отель +$30!"); }
+
+if (hasSalmonFarm) {
+salmonFarmTurnsLeft--;
+if (salmonFarmTurnsLeft <= 0) {
+hasSalmonFarm = false;
+let availableSlots = inventorySize - lockedSlotsCount;
+let emptyIdx = inventory.slice(0, availableSlots).indexOf(null);
+if (emptyIdx !== -1) {
+inventory[emptyIdx] = { name: "Лосось", icon: "🐟", price: 80 };
+showNotification("Ферма +Лосось ($80)!");
+}
+}
+}
+
+if (foreignDeposit.active) {
+if (foreignDeposit.turnsLeft > 0) { foreignDeposit.turnsLeft--; }
+else {
+let profit = Math.round(foreignDeposit.amount * (foreignDeposit.rate / 100));
+balance += profit;
+}
+}
+
+credits.forEach(c => { if (c.turnsLeft > 0) c.turnsLeft--; });
+let overdueCredits = credits.filter(c => c.turnsLeft <= 0);
+if (overdueCredits.length > 0) { document.getElementById('collectors-modal').style.display = 'flex'; }
+
+if (isSick) {
+damageHealth(10, "болезнь");
+} else if (Math.random() < 0.11 * eventChanceMultiplier) {
+isSick = true;
+let loss = Math.round(health * illnessHealthLoss);
+health = Math.max(1, health - loss);
+document.getElementById('illness-modal-text').innerText = `Вы заболели! Потеряно ${loss} HP. Каждый ход -10 HP, пока не вылечитесь.`;
+document.getElementById('illness-modal').style.display = 'flex';
+}
+
+if (poisonTurnsLeft === 0 && Math.random() < 0.08 * eventChanceMultiplier && !hasStation) {
+  poisonTurnsLeft = poisonDurationConfig;
+  document.getElementById('poison-modal').style.display = 'flex';
+  changeHappiness(-15);
+  updatePrices();
+}
+
+if (Math.random() < 0.07 * eventChanceMultiplier) {
+let riskReduction = guardTurns > 0 ? 0.9 : (hasDog ? 0.8 : 0);
+if (Math.random() >= riskReduction) {
+balance = Math.round(balance * (1 - robberyLossPercent));
+currentRodIndex = 0;
+document.getElementById('robbery-modal').style.display = 'flex';
+changeHappiness(-15);
+}
+}
+
+checkRealtyFire();
+checkPoliceRaid();
+checkInterpolTrigger();
+
+updateWorkers();
+updateCompanyTurn();
+updateFields();
+updatePrices();
+updateStocks();
+updateRealty();
+updateGangs();
+updateCompetitors();
+checkSoloGangDonation();
+if (authority < 50) triggerCriminalCase();
+updateUI();
+autoSave();
+}
+
+function checkSoloGangDonation() {
+  if (soloDonationOffered) return;
+  let soloGangs = gangs.filter(g => !g.rivalId);
+  if (soloGangs.length === 0) return;
+  soloGangs.forEach(gang => {
+    gang.loyalty = 100;
+  });
+  if (Math.random() < 0.15) {
+    soloDonationOffered = true;
+    let g = soloGangs[0];
+    let amt = 100 + Math.floor(Math.random() * 201);
+    dirtyBalance += amt;
+    showNotification(`🤝 У банды "${g.name}" нет соперников. Лояльность 100%, донат: $${amt}!`);
+  }
+}
+
+function updateCompanyTurn() {
+companyWoodTypes.forEach(w => {
+if (Math.random() < 0.10) { w.currentPrice = Math.max(10, Math.round(w.currentPrice * 0.7)); }
+else {
+let change = (Math.random() * 0.25) - 0.08;
+w.currentPrice = Math.max(10, Math.round(w.currentPrice * (1 + change)));
+}
+});
+
+if (company) {
+company.turnsCount++;
+company.incomeThisTurn = 0;
+company.salesThisTurn = 0;
+company.warehouse.forEach(item => {
+let matchingWood = companyWoodTypes.find(w => w.name === item.name);
+if (matchingWood) item.price = matchingWood.currentPrice;
+});
+company.workers.forEach((worker, i) => {
+if (worker && !company.workerLoots[i]) {
+let validItems = [];
+if (worker.type === 'lesobur') validItems = companyWoodTypes.filter(w => w.basePrice <= 200);
+else if (worker.type === 'lesopilka') validItems = companyWoodTypes.filter(w => w.basePrice <= 400);
+else if (worker.type === 'lesozagotovka') validItems = companyWoodTypes.filter(w => w.basePrice >= 200);
+if (validItems.length > 0) {
+let picked = validItems[Math.floor(Math.random() * validItems.length)];
+company.workerLoots[i] = { name: picked.name, price: picked.currentPrice, basePrice: picked.basePrice, icon: "🪵", turnAdded: turnCount };
+}
+}
+});
+if (company.turnsCount > 3) {
+if (!company.hasCamera && Math.random() < 0.30) {
+company.warehouse = [];
+let activeIndices = [];
+company.workers.forEach((w, idx) => { if (w) activeIndices.push(idx); });
+if (activeIndices.length > 1) {
+let removeCount = Math.floor(activeIndices.length / 2);
+for (let r = 0; r < removeCount; r++) {
+let randIdx = Math.floor(Math.random() * activeIndices.length);
+company.workers[activeIndices[randIdx]] = null;
+company.workerLoots[activeIndices[randIdx]] = null;
+activeIndices.splice(randIdx, 1);
+}
+}
+showNotification("🥷 ОГРАБЛЕНИЕ компании!");
+}
+let hasDeposit = foreignDeposit.active && foreignDeposit.amount > 0;
+if (company && !hasDeposit && Math.random() < 0.25) {
+company = null;
+showNotification("📉 БАНКРОТСТВО компании!");
+}
+}
+}
+}
+
+function foundCompany() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let hasOwnedBusiness = businesses.some(b => b.owned);
+if (!hasOwnedBusiness) { showNotification("Нужен хотя бы 1 бизнес!"); return; }
+let cleanBalanceWithoutCredit = balance - credits.reduce((s, c) => s + c.owed, 0);
+if (cleanBalanceWithoutCredit < 2500) { showNotification("Нужно $2500 без кредита!"); return; }
+document.getElementById('company-name-input').value = 'ЛесПром Инвест';
+document.getElementById('company-name-modal').style.display = 'flex';
+}
+
+function confirmCompanyName() {
+  let cName = document.getElementById('company-name-input').value;
+  if (!cName) return;
+  cName = cName.trim().substring(0, 25);
+  if (cName.length === 0) { showNotification("Введите название!"); return; }
+  balance -= 2500;
+  company = { name: cName, hasCamera: false, turnsCount: 0, incomeThisTurn: 0, salesThisTurn: 0, workers: [null, null, null, null], workerLoots: [null, null, null, null], warehouse: [] };
+  closeModal('company-name-modal');
+  showNotification(`Компания "${cName}" основана!`);
+  updateUI();
+  autoSave();
+}
+
+function openCompanyWorkerModal(slotIndex) {
+if (!company) return;
+selectedCompanyWorkerSlot = slotIndex;
+let currentWorker = company.workers[slotIndex];
+let optionsDiv = document.getElementById('company-worker-options');
+optionsDiv.innerHTML = '';
+if (currentWorker && currentWorker.type === 'lesozagotovka') { showNotification("Лесозаготовку нельзя заменить!"); return; }
+const wConfigs = [
+{ type: 'lesobur', name: 'Лесобур', price: 30 },
+{ type: 'lesopilka', name: 'Лесопилка', price: 45 },
+{ type: 'lesozagotovka', name: 'Лесозаготовка', price: 55 }
+];
+wConfigs.forEach(w => {
+if (currentWorker) {
+if (currentWorker.type === 'lesobur' && w.type === 'lesobur') return;
+if (currentWorker.type === 'lesopilka' && (w.type === 'lesobur' || w.type === 'lesopilka')) return;
+}
+let btnClean = document.createElement('button');
+btnClean.style.cssText = 'background:#00796b; color:white; padding:8px; font-size:12px; border-radius:6px; border:none; cursor:pointer;';
+btnClean.innerHTML = `💵 ${w.name} ($${w.price} чистыми)`;
+btnClean.onclick = () => hireCompanyWorker(w.type, false);
+let btnDirty = document.createElement('button');
+btnDirty.style.cssText = 'background:#5d4037; color:white; padding:8px; font-size:12px; border-radius:6px; border:none; cursor:pointer;';
+btnDirty.innerHTML = `🧼 ${w.name} ($${w.price} грязными)`;
+btnDirty.onclick = () => hireCompanyWorker(w.type, true);
+optionsDiv.appendChild(btnClean);
+optionsDiv.appendChild(btnDirty);
+});
+document.getElementById('company-worker-modal').style.display = 'flex';
+}
+
+function hireCompanyWorker(type, isDirty) {
+if (!company) return;
+let cost = type === 'lesobur' ? 30 : (type === 'lesopilka' ? 45 : 55);
+let wName = type === 'lesobur' ? 'Лесобур' : (type === 'lesopilka' ? 'Лесопилка' : 'Лесозаготовка');
+if (isDirty) {
+if (dirtyBalance < cost) { showNotification("Недостаточно грязных!"); return; }
+dirtyBalance -= cost;
+registerDirtyAction();
+} else {
+if (balance < cost) { showNotification("Недостаточно чистых!"); return; }
+balance -= cost;
+}
+company.workers[selectedCompanyWorkerSlot] = { type: type, name: wName };
+company.workerLoots[selectedCompanyWorkerSlot] = null;
+closeModal('company-worker-modal');
+showNotification(`Нанят ${wName}!`);
+updateUI();
+}
+
+function moveCompanyLootToWarehouse(slotIndex) {
+if (!company || !company.workerLoots[slotIndex]) return;
+if (company.warehouse.length >= 100) { showNotification("Склад полон!"); return; }
+let item = company.workerLoots[slotIndex];
+company.warehouse.push({ id: Date.now() + Math.random(), name: item.name, price: item.price, turnAdded: turnCount });
+company.workerLoots[slotIndex] = null;
+showNotification(`${item.name} на склад!`);
+updateUI();
+}
+
+function sellCompanyWarehouseItem(index) {
+  if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+  if (!company || !company.warehouse[index]) return;
+  if (company.salesThisTurn >= 2) { showNotification("Макс 2 продажи!"); return; }
+  let item = company.warehouse[index];
+  if (item.turnAdded === turnCount) { showNotification("Нельзя в тот же ход!"); return; }
+  let remaining = 150 - (company.incomeThisTurn || 0);
+  if (remaining <= 0) { showNotification("Максимум $150!"); return; }
+  let gain = Math.min(item.price, remaining);
+  company.warehouse.splice(index, 1);
+  balance += gain;
+  company.incomeThisTurn = (company.incomeThisTurn || 0) + gain;
+  company.salesThisTurn = (company.salesThisTurn || 0) + 1;
+  showNotification(`Продан ${item.name} за $${gain}!`);
+  updateUI();
+}
+
+function buyCompanyCamera() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (!company) return;
+if (company.hasCamera) { showNotification("Камера уже есть!"); return; }
+if (balance >= 100) {
+balance -= 100;
+company.hasCamera = true;
+showNotification("Камера куплена!");
+updateUI();
+} else { showNotification("Недостаточно ($100)!"); }
+}
+
+function renderCompanyUI() {
+let container = document.getElementById('company-main-container');
+if (!container) return;
+if (!company) {
+container.innerHTML = `
+<div style="background: #e0f2f1; padding: 15px; border-radius: 12px; text-align: center; margin-top: 10px;">
+<h3 style="color: #004d40; margin-top: 0;">🏢 Основание Компании</h3>
+<p style="font-size: 12px; color: #555; text-align: left;">
+Нужен минимум <b>1 купленный бизнес</b>.<br>
+Стоимость: <b>$2500 чистых</b>.<br>
+Максимальный доход: <b>$150 за ход</b>.
+</p>
+<button class="btn-action" style="background: #00796b; justify-content: center;" onclick="foundCompany()">🏢 Основать ($2500)</button>
+</div>
+`;
+return;
+}
+let html = `
+<div style="background: #004d40; color: white; padding: 10px; border-radius: 10px; font-weight: bold; font-size: 16px; margin-bottom: 10px;">
+🏢 ${company.name}
+</div>
+<div class="section-title">🪓 Рабочие компании (4)</div>
+<div class="workers-grid">
+`;
+for (let i = 0; i < 4; i++) {
+let worker = company.workers[i];
+let loot = company.workerLoots[i];
+let workerText = worker ? worker.name : "+ Нанять";
+let workerSub = worker ? "Нажмите для замены" : "Свободно";
+let lootText = loot ? `🪵 ${loot.name}<br><span style="color:#2e7d32; font-weight:bold;">$${loot.price}</span>` : "Пусто";
+html += `
+<div class="worker-card">
+  <div class="slot worker-slot" onclick="openCompanyWorkerModal(${i})">
+    <div class="item-name">${workerText}</div>
+    <div style="font-size: 9px; color: #666;">${workerSub}</div>
+  </div>
+  <div class="slot worker-loot ${loot ? 'filled' : ''}" onclick="moveCompanyLootToWarehouse(${i})">
+    <div>${lootText}</div>
+  </div>
+</div>
+`;
+}
+html += `</div>`;
+html += `
+<div class="section-title">📦 Склад (${company.warehouse.length}/100) — $${company.incomeThisTurn || 0}/$150</div>
+<div style="max-height: 200px; overflow-y: auto; background: #fafafa; border: 1px solid #ccc; border-radius: 8px; padding: 8px; margin-bottom: 10px;">
+`;
+if (company.warehouse.length === 0) {
+html += `<div style="font-size: 12px; color: #888;">Пусто</div>`;
+} else {
+html += `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">`;
+company.warehouse.forEach((item, idx) => {
+let canSell = item.turnAdded !== turnCount && (company.salesThisTurn || 0) < 2;
+let statusText = canSell ? `Продать за $${item.price}` : ((company.salesThisTurn || 0) >= 2 ? "Лимит" : "Нельзя");
+let bg = canSell ? "#e0f2f1" : "#eceff1";
+html += `
+<div style="background: ${bg}; border: 1px solid #b2dfdb; border-radius: 6px; padding: 6px; font-size: 11px; cursor: pointer; text-align: center;" onclick="sellCompanyWarehouseItem(${idx})">
+  <div style="font-weight: bold;">🪵 ${item.name}</div>
+  <div style="color: #2e7d32; font-weight: bold;">$${item.price}</div>
+  <div style="font-size: 9px; color: ${canSell ? '#00796b' : '#d32f2f'};">${statusText}</div>
+</div>
+`;
+});
+html += `</div>`;
+}
+html += `</div>`;
+if (!company.hasCamera) {
+html += `<button class="btn-action" style="background: #0288d1; justify-content: center;" onclick="buyCompanyCamera()">📹 Камера ($100)</button>`;
+} else {
+html += `<div style="font-size: 12px; color: #2e7d32; font-weight: bold; margin-bottom: 8px;">✅ Камера стоит</div>`;
+}
+container.innerHTML = html;
+}
+
+function resolvePolicePorn(choice) {
+closeModal('police-porn-modal');
+if (choice === 'bribe') {
+if (balance >= 200) { balance -= 200; }
+else if (dirtyBalance >= 200) { dirtyBalance -= 200; }
+else {
+showNotification("Не хватило!");
+jailTurnsLeft = 10;
+isAdultMoviesBanned = true;
+updateUI();
+return;
+}
+policePornCooldown = 10;
+showNotification("Откупились!");
+} else {
+jailTurnsLeft = 10;
+isAdultMoviesBanned = true;
+showNotification("10 ходов + бан 18+!");
+}
+updateUI();
+}
+
+function triggerCriminalCase() {
+if (dirtyBalance >= 150 && criminalCaseCount === 0) {
+criminalCaseCount = 1;
+document.getElementById('criminal-case-modal').style.display = 'flex';
+}
+}
+
+function resolveCriminalCase(choice) {
+closeModal('criminal-case-modal');
+if (choice === 'pay') {
+if (balance >= 500) { balance -= 500; showNotification("Взятка $500!"); }
+else if (dirtyBalance >= 500) { dirtyBalance -= 500; showNotification("Взятка $500 грязными!"); }
+else { showNotification("Не хватило на взятку! Уголовное дело принято."); choice = 'accept'; }
+}
+if (choice === 'accept') {
+  jailTurnsLeft = 15;
+  dirtyBalance = 0;
+  showNotification("Тюрьма 15 ходов! Все грязные деньги конфискованы!");
+}
+updateUI();
+}
+
+function getItemWeight(item) {
+  let mult = 1;
+  if (normalDifficulty) mult = fishWeightMultipliers.normal[item.name] || 1;
+  else if (hardcoreDifficulty) mult = fishWeightMultipliers.hardcore[item.name] || 1;
+  return item.baseChance * mult;
+}
+
+function fish() {
+if (health < 30) { showNotification("HP < 30!"); return; }
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (fishCaughtThisTurn >= 5) { showNotification("5 рыб максимум!"); return; }
+if (balance < 10) { showNotification("Недостаточно ($10)!"); return; }
+let availableSlots = inventorySize - lockedSlotsCount;
+let emptySlotIndex = inventory.slice(0, availableSlots).indexOf(null);
+if (emptySlotIndex === -1) { showNotification("Инвентарь полон!"); return; }
+balance -= 10;
+fishCaughtThisTurn++;
+let rod = rods[currentRodIndex];
+let rareChance = 0.5 + rod.bonus;
+let roll = Math.random() * 100;
+let caughtItem = null;
+let treasure = tryTreasureCatch();
+if (treasure) {
+  caughtItem = { name: treasure.name, icon: treasure.icon, price: treasure.price, isTreasure: true };
+  showNotification(`💎 СОКРОВИЩЕ! ${treasure.name} ($${treasure.price})!`);
+} else if (Math.random() < medusaChance) {
+caughtItem = { name: "Медуза", icon: "🪼", price: 1 };
+damageHealth(5, "медуза");
+showNotification("🪼 Медуза! -$1 -5% HP!");
+} else if (currentRodIndex === 4 && Math.random() < 0.09) {
+let oFish = oceanFishList[Math.floor(Math.random() * oceanFishList.length)];
+caughtItem = { name: oFish.name, icon: oFish.icon, price: oFish.price, isOcean: true };
+showNotification(`Улов: ${caughtItem.name}!`);
+} else if (roll < rareChance) {
+let rFish = rareFishList[Math.floor(Math.random() * rareFishList.length)];
+caughtItem = { name: rFish.name, icon: rFish.icon, price: rFish.price, isRare: true };
+showNotification(`Улов: ${caughtItem.name}!`);
+} else {
+let totalWeight = itemsList.reduce((sum, item) => sum + getItemWeight(item), 0);
+let rand = Math.random() * totalWeight;
+let cumulative = 0;
+let selectedItem = itemsList[0];
+for (let item of itemsList) {
+cumulative += getItemWeight(item);
+if (rand <= cumulative) { selectedItem = item; break; }
+}
+let price = selectedItem.currentPrice;
+if (poisonTurnsLeft > 0) price = Math.round(price * 0.6);
+caughtItem = { name: selectedItem.name, icon: selectedItem.icon, price: price };
+showNotification(`Улов: ${caughtItem.name} ($${caughtItem.price})!`);
+}
+inventory[emptySlotIndex] = caughtItem;
+updateUI();
+}
+
+function sellItem(index) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (happiness < 30) { showNotification("Счастье < 30%!"); return; }
+if (!inventory[index]) return;
+let item = inventory[index];
+inventory[index] = null;
+balance += item.price;
+salesThisTurn++;
+if (item.isOcean) oceanIncomeTotal += item.price;
+showNotification(`Продано ${item.name} за $${item.price}!`);
+if (salesThisTurn > 4 && bribeFishTurns === 0 && authority < 15) {
+document.getElementById('inspector-limit-modal').style.display = 'flex';
+}
+updateUI();
+}
+
+function buyBribe(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (type === 'fish') {
+if (bribeFishTurns > 0) { showNotification("Уже действует!"); return; }
+if (balance >= 80) { balance -= 80; bribeFishTurns = 5; showNotification("Откуп Рыбнадзора!"); }
+else showNotification("Недостаточно ($80)!");
+} else if (type === 'police') {
+if (bribePoliceTurns > 0) { showNotification("Уже действует!"); return; }
+if (balance >= 100) { balance -= 100; bribePoliceTurns = 5; showNotification("Откуп Полиции!"); }
+else showNotification("Недостаточно ($100)!");
+}
+updateUI();
+}
+
+function buyGuard() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (balance >= 100) { balance -= 100; guardTurns = 10; showNotification("Охранник!"); updateUI(); }
+else showNotification("Недостаточно ($100)!");
+}
+
+function buyDog() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (balance >= 110) { balance -= 110; hasDog = true; showNotification("Собака!"); updateUI(); }
+else showNotification("Недостаточно ($110)!");
+}
+
+function buyRod(index) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (currentRodIndex >= index) { showNotification("Уже есть!"); return; }
+let rod = rods[index];
+if (balance >= rod.price) {
+balance -= rod.price;
+currentRodIndex = index;
+showNotification(`Куплена ${rod.name}!`);
+updateUI();
+} else { showNotification(`Недостаточно ($${rod.price})!`); }
+}
+
+function buyBuilding(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (type === 'fishShop') {
+if (!hasFishShop && balance >= 100) { balance -= 100; hasFishShop = true; showNotification("Рыбный магазин!"); }
+else showNotification("Недостаточно ($100)!");
+} else if (type === 'hotel') {
+if (!hasHotel && balance >= 300) { balance -= 300; hasHotel = true; showNotification("Отель!"); }
+else showNotification("Недостаточно ($300)!");
+} else if (type === 'salmonFarm') {
+if (!hasSalmonFarm && balance >= 70) { balance -= 70; hasSalmonFarm = true; salmonFarmTurnsLeft = 3; showNotification("Ферма лосося!"); }
+else showNotification("Недостаточно ($70)!");
+} else if (type === 'station') {
+if (!hasStation && balance >= 75) { balance -= 75; hasStation = true; showNotification("Очист. станция!"); }
+else showNotification("Недостаточно ($75)!");
+} else if (type === 'banya') {
+if (!hasBanya && balance >= 150) { balance -= 150; hasBanya = true; showNotification("Коч баня!"); }
+else showNotification("Недостаточно ($150)!");
+} else if (type === 'casino') {
+if (casinoClosed) { showNotification("Казино закрыто!"); return; }
+if (!hasCasino && balance >= 250) { balance -= 250; hasCasino = true; document.getElementById('play-casino-btn').style.display='flex'; showNotification("Казино открыто!"); }
+else showNotification("Недостаточно ($250)!");
+}
+updateUI();
+}
+
+function openFishExchange() {
+  if (!hasFishShop) return;
+  let list = document.getElementById('fish-exchange-list');
+  list.innerHTML = '';
+  let hasAny = false;
+  inventory.forEach((item, idx) => {
+    if (item) {
+      hasAny = true;
+      let btn = document.createElement('button');
+      btn.style.cssText = 'background:#0288d1; color:white; padding:10px; border-radius:6px; border:none; cursor:pointer; font-size:12px; text-align:left;';
+      btn.innerHTML = `${item.icon} <b>${item.name}</b> — <span style="color:#a5d6a7;">$${item.price}</span>`;
+      btn.onclick = () => exchangeFish(idx);
+      list.appendChild(btn);
+    }
+  });
+  if (!hasAny) list.innerHTML = '<div style="font-size:12px; color:#ccc;">Инвентарь пуст</div>';
+  document.getElementById('fish-exchange-modal').style.display = 'flex';
+}
+
+function exchangeFish(index) {
+  if (!inventory[index]) return;
+  let oldItem = inventory[index];
+  let pool = itemsList.concat(rareFishList).concat(oceanFishList);
+  let newFish = pool[Math.floor(Math.random() * pool.length)];
+  let newItem = {
+    name: newFish.name, icon: newFish.icon, price: newFish.price,
+    isRare: rareFishList.some(f => f.name === newFish.name),
+    isOcean: oceanFishList.some(f => f.name === newFish.name)
+  };
+  inventory[index] = newItem;
+  closeModal('fish-exchange-modal');
+  showNotification(`Обмен: ${oldItem.name} → ${newItem.name}!`);
+  updateUI();
+}
+
+function openCasinoModal() {
+  if (casinoClosed) { showNotification("🚫 Казино закрыто!"); return; }
+  document.getElementById('roulette-result').innerText = '';
+  document.getElementById('casino-modal').style.display = 'flex';
+}
+
+function spinRoulette(color) {
+  if (casinoClosed) { showNotification("🚫 Казино закрыто!"); return; }
+  if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+  let betInput = document.getElementById('roulette-bet');
+  let bet = parseInt(betInput.value);
+  if (isNaN(bet) || bet <= 0 || balance < bet) {
+    document.getElementById('roulette-result').innerText = '❌ Неверная ставка!';
+    return;
+  }
+  balance -= bet;
+  casinoPlaysHistory.push(turnCount);
+  let result = Math.random() < 0.5 ? 'red' : 'black';
+  let resultText = result === 'red' ? '🔴 Красное' : '⚫ Чёрное';
+  if (result === color) {
+    let win = Math.round(bet * 1.5);
+    balance += win;
+    document.getElementById('roulette-result').innerText = `🎉 ${resultText}! +$${win}!`;
+  } else {
+    document.getElementById('roulette-result').innerText = `😢 ${resultText}. -$${bet}.`;
+  }
+  updateUI();
+  autoSave();
+}
+
+function cartelDonateAccept() {
+  closeModal('cartel-donate-modal');
+  let data = window._cartelDonateData;
+  if (!data) return;
+  dirtyBalance += data.amount;
+  data.gang.loyalty = Math.min(100, data.gang.loyalty + 5);
+  showNotification(`💰 +$${data.amount} от ${data.gang.name}!`);
+  updateUI();
+  autoSave();
+}
+
+function cartelDonateRefuse() {
+  closeModal('cartel-donate-modal');
+  let data = window._cartelDonateData;
+  if (!data) return;
+  data.gang.loyalty = Math.max(0, data.gang.loyalty - 15);
+  showNotification(`❌ Отказ от ${data.gang.name}. -15%.`);
+  updateUI();
+  autoSave();
+}
+
+function cartelWarSupport() {
+  closeModal('cartel-war-modal');
+  let data = window._cartelWarData;
+  if (!data) return;
+  let totalWeapons = weapons.deagle.count + weapons.ak47.count + weapons.grenade.count;
+  if (totalWeapons === 0) { showNotification("Нет оружия!"); return; }
+  weapons.deagle.count = 0;
+  weapons.ak47.count = 0;
+  weapons.grenade.count = 0;
+  let chance = Math.min(95, 20 + totalWeapons * 5) / 100;
+  if (Math.random() < chance) {
+    let rewardWeapons = Math.floor(Math.random() * 11);
+    let weaponKeys = ['deagle', 'ak47', 'grenade'];
+    for (let i = 0; i < rewardWeapons; i++) {
+      let k = weaponKeys[Math.floor(Math.random() * weaponKeys.length)];
+      weapons[k].count++;
+    }
+    let rewardMoney = 100 + Math.floor(Math.random() * 151);
+    dirtyBalance += rewardMoney;
+    registerDirtyAction();
+    data.friend.loyalty = Math.min(100, data.friend.loyalty + 20);
+    data.rival.loyalty = Math.max(0, data.rival.loyalty - 20);
+    showNotification(`🎉 ${data.friend.name} победил! +${rewardWeapons} оружия +$${rewardMoney}!`);
+  } else {
+    showNotification(`💀 ${data.friend.name} проиграл...`);
+  }
+  updateUI();
+  autoSave();
+}
+
+function cartelWarIgnore() {
+  closeModal('cartel-war-modal');
+  let data = window._cartelWarData;
+  if (!data) return;
+  if (Math.random() < 0.20) {
+    let rewardWeapons = Math.floor(Math.random() * 11);
+    let weaponKeys = ['deagle', 'ak47', 'grenade'];
+    for (let i = 0; i < rewardWeapons; i++) {
+      let k = weaponKeys[Math.floor(Math.random() * weaponKeys.length)];
+      weapons[k].count++;
+    }
+    let rewardMoney = 100 + Math.floor(Math.random() * 151);
+    dirtyBalance += rewardMoney;
+    registerDirtyAction();
+    showNotification(`🍀 Победа без помощи! +${rewardWeapons} оружия +$${rewardMoney}!`);
+  } else {
+    dirtyBalance = 0;
+    weapons.deagle.count = 0;
+    weapons.ak47.count = 0;
+    weapons.grenade.count = 0;
+    data.friend.loyalty = Math.max(0, data.friend.loyalty - 30);
+    showNotification(`💀 ${data.friend.name} проиграл!`);
+  }
+  updateUI();
+  autoSave();
+}
+
+function resolveCompanyRobbery(choice) {
+  closeModal('company-robbery-modal');
+  let data = window._companyRobberyData;
+  if (!data) return;
+  if (choice === 'sue') {
+    let cost = 60;
+    if (balance < cost) { showNotification("Нужно $60!"); return; }
+    balance -= cost;
+    if (Math.random() < 0.30) {
+      balance += data.amount;
+      showNotification(`⚖️ Суд выигран! +$${data.amount}.`);
+    } else showNotification("⚖️ Проигран.");
+  } else if (choice === 'cartel') {
+    let friendlyGangs = gangs.filter(g => g.loyalty >= 80);
+    if (friendlyGangs.length === 0) { showNotification("Нет дружественных (80+)!"); return; }
+    if (balance < 10) { showNotification("Нужно $10!"); return; }
+    balance -= 10;
+    if (Math.random() < 0.60) { balance += data.amount; showNotification(`🥷 +$${data.amount}!`); }
+    else showNotification("🥷 Не справился...");
+  } else showNotification("Проигнорировано.");
+  updateUI();
+  autoSave();
+}
+
+function playCasino() { openCasinoModal(); }
+
+function takeCreditCustom() {
+  if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+  if (failedCreditsCount >= 2) { showNotification("2 непогашенных кредита!"); return; }
+  let amtInput = document.getElementById('credit-amount-input');
+  let termInput = document.getElementById('credit-term-input');
+  let amt = parseInt(amtInput.value);
+  let term = parseInt(termInput.value);
+  if (isNaN(amt) || amt <= 0) { showNotification("Введите сумму!"); return; }
+  if (amt > 500) { showNotification("Максимум $500!"); return; }
+  if (isNaN(term) || term < 1 || term > 10) { showNotification("Срок 1-10!"); return; }
+  let owed = Math.round(amt * 1.3);
+  credits.push({ amount: amt, owed: owed, turnsLeft: term, term: term });
+  balance += amt;
+  amtInput.value = '';
+  showNotification(`Кредит $${amt} (вернуть $${owed})!`);
+  updateUI();
+  autoSave();
+}
+
+function payAllDebts() {
+  if (credits.length === 0) return;
+  let c = credits[0];
+  if (balance >= c.owed) {
+    balance -= c.owed;
+    credits.shift();
+    showNotification(`Кредит $${c.owed} погашен!`);
+    updateUI();
+    autoSave();
+  } else showNotification("Недостаточно!");
+}
+
+function openWorkerModal(slotIndex) {
+selectedWorkerSlot = slotIndex;
+let discount = !hasHiredBefore ? 0.5 : 1.0;
+document.getElementById('price-novice').innerText = `$${Math.round(100 * discount)}`;
+document.getElementById('price-apprentice').innerText = `$${Math.round(150 * discount)}`;
+document.getElementById('price-master').innerText = `$${Math.round(250 * discount)}`;
+document.getElementById('hire-worker-modal').style.display = 'flex';
+}
+
+function hireWorker(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let workerData = workerTypes[type];
+let discount = !hasHiredBefore ? 0.5 : 1.0;
+let cost = Math.round(workerData.cost * discount);
+if (balance >= cost) {
+balance -= cost;
+hasHiredBefore = true;
+workers[selectedWorkerSlot] = { name: workerData.name, emoji: workerData.emoji, turnsLeft: workerData.turns, chance: workerData.chance };
+closeModal('hire-worker-modal');
+showNotification(`${workerData.name} нанят!`);
+updateUI();
+} else showNotification(`Недостаточно ($${cost})!`);
+}
+
+function takeWorkerLoot(slotIndex) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let item = workerLoots[slotIndex];
+if (!item) return;
+let availableSlots = inventorySize - lockedSlotsCount;
+let emptyIndex = inventory.slice(0, availableSlots).indexOf(null);
+if (emptyIndex === -1) { showNotification("Инвентарь полон!"); return; }
+inventory[emptyIndex] = item;
+workerLoots[slotIndex] = null;
+showNotification(`Забран ${item.name}!`);
+updateUI();
+}
+
+function resolveInspector(choice) {
+closeModal('inspector-limit-modal');
+if (choice === 'fine') {
+balance = Math.max(0, balance - 250);
+showNotification("Откуп $250.");
+} else {
+inspectorSeizeCount++;
+if (inspectorSeizeCount >= 2) {
+lockedSlotsCount = inventorySize;
+for(let i = 0; i < inventorySize; i++) inventory[i] = null;
+currentRodIndex = 0;
+showNotification("Все 20 слотов конфискованы, удочка сброшена!");
+} else {
+lockedSlotsCount = 10;
+for(let i = 0; i < 10; i++) inventory[i] = null;
+currentRodIndex = 0;
+showNotification("10 слотов конфискованы!");
+}
+}
+updateUI();
+}
+
+function resolveCollectors(choice) {
+closeModal('collectors-modal');
+if (choice === 'debt') {
+  if (credits.length > 0) {
+    let c = credits.shift();
+    balance -= c.owed;
+    failedCreditsCount++;
+  }
+} else {
+hasFishShop = false; hasHotel = false; hasSalmonFarm = false; hasStation = false; hasBanya = false; hasCasino = false;
+currentRodIndex = 0;
+credits = [];
+failedCreditsCount++;
+}
+updateUI();
+}
+
+function openHealthModal() {
+document.getElementById('modal-health-val').innerText = health;
+document.getElementById('health-modal').style.display = 'flex';
+}
+
+function buyMedicine(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (type === 'antibiotics') {
+if (balance >= 30) {
+balance -= 30;
+health = Math.min(100, health + 40);
+if (health > 50) isSick = false;
+showNotification("+40 HP!");
+} else showNotification("Недостаточно ($30)!");
+} else if (type === 'potion') {
+if (balance >= 50) {
+balance -= 50;
+let roll = Math.random() * 100;
+if (roll < 50) { health = 100; isSick = false; showNotification("100 HP!"); }
+else { damageHealth(30, "отвар"); showNotification("Отвар навредил!"); }
+} else showNotification("Недостаточно ($50)!");
+} else if (type === 'pills') {
+if (balance >= 5) {
+balance -= 5;
+if (Math.random() < 0.10) {
+closeModal('health-modal');
+document.getElementById('death-modal').style.display = 'flex';
+return;
+} else showNotification("💊 Обошлось...");
+} else showNotification("Недостаточно ($5)!");
+}
+closeModal('health-modal');
+updateUI();
+}
+
+function resolvePoliceSearch(choice) {
+closeModal('police-search-modal');
+if (choice === 'bribe') {
+if (balance >= 500) { balance -= 500; showNotification("Взятка $500!"); }
+else if (dirtyBalance >= 500) { dirtyBalance -= 500; showNotification("Взятка $500 грязными!"); }
+else { showNotification("Не хватило!"); applyPoliceSearchConsequences(); }
+} else {
+if (Math.random() < 0.85) applyPoliceSearchConsequences();
+else showNotification("Повезло!");
+}
+updateUI();
+}
+
+function applyPoliceSearchConsequences() {
+policeFreezeTurns = 20;
+let moneyLost = Math.round(balance * 0.4);
+balance = Math.max(0, balance - moneyLost);
+happiness = Math.max(0, happiness - 35);
+damageHealth(30, "обыск");
+showNotification(`🚔 ОБЫСК! -$${moneyLost}, -35% счастья!`);
+if (happiness < 10) document.getElementById('suicide-modal').style.display = 'flex';
+}
+
+function setDifficulty(percent) {
+  if (percent === 20) {
+    balance = 10;
+    eventChanceMultiplier = 2.5;
+    normalDifficulty = false;
+    hardcoreDifficulty = true;
+    fireChance = 0.30;
+    policeRaidStart = 5;
+    policeRaidInterval = 3;
+    pornRate = 14;
+    weaponMarkup = 1.2;
+    robberyLossPercent = 0.95;
+    illnessHealthLoss = 0.95;
+    poisonDurationConfig = 10;
+    medusaChance = 0.10;
+    difficultyName = "🟢 Лёгкий";
+  } else if (percent === 50) {
+    balance = 50;
+    eventChanceMultiplier = 1.55;
+    normalDifficulty = true;
+    hardcoreDifficulty = false;
+    fireChance = 0.15;
+    policeRaidStart = 10;
+    policeRaidInterval = 5;
+    pornRate = 7;
+    weaponMarkup = 1.3;
+    robberyLossPercent = 0.85;
+    illnessHealthLoss = 0.85;
+    poisonDurationConfig = 8;
+    medusaChance = 0.06;
+    difficultyName = "🟡 Базовый";
+  } else if (percent === 70) {
+    balance = 150;
+    eventChanceMultiplier = 1.3;
+    normalDifficulty = false;
+    hardcoreDifficulty = false;
+    fireChance = 0.10;
+    policeRaidStart = 15;
+    policeRaidInterval = 7;
+    pornRate = 5;
+    weaponMarkup = 1.4;
+    robberyLossPercent = 0.75;
+    illnessHealthLoss = 0.75;
+    poisonDurationConfig = 6;
+    medusaChance = 0.04;
+    difficultyName = "🔴 Сложный";
+  }
+
+  document.getElementById('difficulty-modal').style.display = 'none';
+  document.getElementById('difficulty-badge').innerText = difficultyName;
+  updatePrices();
+  updateUI();
+  autoSave();
+}
+
+function switchTab(tabId, ev) {
+document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+document.getElementById(tabId).classList.add('active');
+if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+}
+
+function switchFishSubTab(subTabId) {
+document.getElementById('fishing-subtab').style.display = subTabId === 'fishing-subtab' ? 'block' : 'none';
+document.getElementById('personality-subtab').style.display = subTabId === 'personality-subtab' ? 'block' : 'none';
+document.getElementById('subtab-fishing-btn').classList.toggle('active', subTabId === 'fishing-subtab');
+document.getElementById('subtab-personality-btn').classList.toggle('active', subTabId === 'personality-subtab');
+}
+
+function switchMarketSubTab(subTabId) {
+document.getElementById('market-goods-subtab').style.display = subTabId === 'market-goods-subtab' ? 'block' : 'none';
+document.getElementById('market-adult-subtab').style.display = subTabId === 'market-adult-subtab' ? 'block' : 'none';
+document.getElementById('market-company-subtab').style.display = subTabId === 'market-company-subtab' ? 'block' : 'none';
+document.getElementById('subtab-market-goods-btn').classList.toggle('active', subTabId === 'market-goods-subtab');
+document.getElementById('subtab-market-adult-btn').classList.toggle('active', subTabId === 'market-adult-subtab');
+document.getElementById('subtab-market-company-btn').classList.toggle('active', subTabId === 'market-company-subtab');
+}
+
+function switchSubTab(subTabId) {
+document.getElementById('gangs-subtab').style.display = subTabId === 'gangs-subtab' ? 'block' : 'none';
+document.getElementById('competitors-subtab').style.display = subTabId === 'competitors-subtab' ? 'block' : 'none';
+document.getElementById('subtab-gangs-btn').classList.toggle('active', subTabId === 'gangs-subtab');
+document.getElementById('subtab-comp-btn').classList.toggle('active', subTabId === 'competitors-subtab');
+}
+
+function openForeignDeposit() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let input = document.getElementById('deposit-input');
+let amt = parseInt(input.value);
+if (isNaN(amt) || amt <= 0 || balance < amt) { showNotification("Недостаточно!"); return; }
+balance -= amt;
+if (foreignDeposit.active) foreignDeposit.amount += amt;
+else { foreignDeposit.amount = amt; foreignDeposit.rate = 3; foreignDeposit.turnsLeft = 3; foreignDeposit.active = true; }
+input.value = '';
+showNotification(`Вклад +$${amt}!`);
+updateUI();
+}
+
+function hireSeller() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (balance >= 40 && sellerTurns === 0) { balance -= 40; sellerTurns = 10; showNotification("Продавец!"); updateUI(); }
+}
+
+function hireStaff(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (type === 'farmer' && balance >= 50 && farmerTurns === 0) { balance -= 50; farmerTurns = 10; showNotification("Фермер!"); updateUI(); }
+else if (type === 'courier' && balance >= 40 && courierTurns === 0) { balance -= 40; courierTurns = 10; showNotification("Курьер!"); updateUI(); }
+}
+
+function buyWeapon(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+if (selectedGangIndex === null) return;
+let gang = gangs[selectedGangIndex];
+let rival = getGangRival(gang);
+if (!gang) return;
+if (gang.loyalty <= 80) { showNotification("🚫 Банда не доверяет (>80% нужно)!"); return; }
+if (rival && rival.loyalty > 50) { showNotification(`🚫 Дружба с врагом "${rival.name}" (${rival.loyalty}%)!`); return; }
+let price = gang.weaponPrices[type] || weaponPrices[type];
+if (warTurnsLeft > 0) price = Math.round(price * warMultiplier);
+if (balance >= price) {
+balance -= price;
+weapons[type].count++;
+showNotification(`Куплен ${weapons[type].name} за $${price}!`);
+updateUI();
+} else showNotification(`Недостаточно ($${price})!`);
+}
+
+function sellWeapon(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+if (type === 'seeds') { showNotification("Семена нельзя продать!"); return; }
+if (type === 'weed' && courierTurns === 0) { showNotification("Нужен 🚴!"); return; }
+if (type !== 'weed' && sellerTurns === 0) { showNotification("Нужен 👤!"); return; }
+if (!weapons[type] || weapons[type].count <= 0) { showNotification("Нет товара!"); return; }
+let price = weaponPrices[type] || 0;
+weapons[type].count--;
+dirtyBalance += price;
+weaponIncomeTotal += price;
+registerDirtyAction();
+showNotification(`Продан ${weapons[type].name} за $${price}!`);
+updateUI();
+}
+
+function renderMarket() {
+let container = document.getElementById('market-container');
+if (!container) return;
+container.innerHTML = '';
+let items = [
+{ key: 'deagle', name: '🔫 Дигл' },
+{ key: 'ak47', name: '🔫 Калаш' },
+{ key: 'grenade', name: '💣 Граната' },
+{ key: 'weed', name: '🌿 Трава' },
+{ key: 'seeds', name: '🌱 Семена травы', isSeeds: true }
+];
+items.forEach(item => {
+let card = document.createElement('div');
+card.className = 'market-card';
+let count = weapons[item.key] ? weapons[item.key].count : 0;
+let price = weaponPrices[item.key] || 0;
+if (item.isSeeds) {
+card.innerHTML = `
+<div class="market-info">
+<div class="market-title">${item.name}</div>
+<div style="font-size:11px; color:#555;">Кол-во: ${count}</div>
+<div style="font-size:10px; color:#c62828; font-weight:bold;">Нельзя продать</div>
+</div>
+<div><button class="btn-stock" style="background-color:#888;" disabled>Нельзя</button></div>
+`;
+} else {
+let canSell = (item.key === 'weed') ? (courierTurns > 0 && count > 0) : (sellerTurns > 0 && count > 0);
+let hint = '';
+if (item.key === 'weed' && courierTurns === 0) hint = '🚴 Нужен курьер';
+else if (item.key !== 'weed' && sellerTurns === 0) hint = '👤 Нужен продавец';
+card.innerHTML = `
+<div class="market-info">
+<div class="market-title">${item.name}</div>
+<div style="font-size:11px; color:#555;">Кол-во: ${count}</div>
+<div class="market-price">Цена: $${price} (🧼)</div>
+${hint ? `<div style="font-size:10px; color:#c62828; font-weight:bold;">${hint}</div>` : ''}
+</div>
+<div><button class="btn-stock btn-sell-stock" ${canSell ? '' : 'disabled'} onclick="sellWeapon('${item.key}')">Продать ($${price})</button></div>
+`;
+}
+container.appendChild(card);
+});
+}
+
+function updateGangs() {
+gangs.forEach(gang => {
+if (gang.action === 'improve') gang.loyalty = Math.min(100, gang.loyalty + 5);
+else if (gang.action === 'worsen') gang.loyalty = Math.max(0, gang.loyalty - 10);
+});
+checkAndRepairRivals();
+renderGangs();
+}
+
+function renderGangs() {
+let container = document.getElementById('gangs-container');
+if (!container) return;
+container.innerHTML = '';
+gangs.forEach((gang, idx) => {
+let rival = getGangRival(gang);
+let arrow = gang.action === 'improve' ? ' ⬆️' : (gang.action === 'worsen' ? ' ⬇️' : '');
+let card = document.createElement('div');
+card.className = 'gang-card';
+card.onclick = () => openGangActionModal(idx);
+card.innerHTML = `
+<div class="gang-info">
+<div class="gang-title">${gang.name}</div>
+<div class="gang-loyalty">Лояльность: ${gang.loyalty}%${arrow}</div>
+<div style="font-size:11px; color:#555;">Соперник: ${rival ? rival.name + ' (' + rival.loyalty + '%)' : 'Нет'}</div>
+</div>
+`;
+container.appendChild(card);
+});
+}
+
+function openGangActionModal(idx) {
+selectedGangIndex = idx;
+let gang = gangs[idx];
+if (!gang) return;
+let rival = getGangRival(gang);
+document.getElementById('gang-modal-title').innerText = gang.name;
+document.getElementById('gang-modal-loyalty').innerText = `Лояльность: ${gang.loyalty}%`;
+document.getElementById('gang-modal-rival').innerText = `Соперник: ${rival ? rival.name + ' (' + rival.loyalty + '%)' : 'Нет'}`;
+
+let sabBtn = document.getElementById('gang-sabotage-btn');
+if (rival && gang.loyalty >= 80 && weapons.grenade.count > 0) sabBtn.style.display = 'block';
+else sabBtn.style.display = 'none';
+
+let deaglePrice = gang.weaponPrices.deagle;
+let akPrice = gang.weaponPrices.ak47;
+let grenadePrice = gang.weaponPrices.grenade;
+if (warTurnsLeft > 0) {
+  deaglePrice = Math.round(deaglePrice * warMultiplier);
+  akPrice = Math.round(akPrice * warMultiplier);
+  grenadePrice = Math.round(grenadePrice * warMultiplier);
+}
+
+document.getElementById('btn-buy-deagle').innerText = `Дигл ($${deaglePrice})`;
+document.getElementById('btn-buy-ak47').innerText = `Калаш ($${akPrice})`;
+document.getElementById('btn-buy-grenade').innerText = `Граната ($${grenadePrice})`;
+
+document.getElementById('gang-action-modal').style.display = 'flex';
+}
+
+function gangAction(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (selectedGangIndex === null) return;
+let gang = gangs[selectedGangIndex];
+if (!gang) return;
+if (type === 'improve') { gang.action = 'improve'; showNotification(`+ к "${gang.name}".`); }
+else if (type === 'worsen') { gang.action = 'worsen'; showNotification(`- к "${gang.name}".`); }
+else if (type === 'donate') {
+if (balance >= 20) { balance -= 20; gang.loyalty = Math.min(100, gang.loyalty + 20); showNotification(`+20% к "${gang.name}".`); }
+else showNotification("Недостаточно ($20)!");
+}
+closeModal('gang-action-modal');
+updateUI();
+}
+
+function openGangShop() {
+closeModal('gang-action-modal');
+let gang = gangs[selectedGangIndex];
+if (!gang) return;
+let rival = getGangRival(gang);
+document.getElementById('gang-shop-title').innerText = `🛒 Закупка у ${gang.name}`;
+let lockedNotice = document.getElementById('gang-shop-locked');
+let btnDeagle = document.getElementById('btn-buy-deagle');
+let btnAk = document.getElementById('btn-buy-ak47');
+let btnGrenade = document.getElementById('btn-buy-grenade');
+
+let canBuy = (gang.loyalty > 80) && (!rival || rival.loyalty <= 50);
+
+if (!canBuy) {
+  let reason = "";
+  if (gang.loyalty <= 80) reason = `🚫 Лояльность банды ≤ 80% (${gang.loyalty}%)`;
+  else if (rival && rival.loyalty > 50) reason = `🚫 Дружба с врагом "${rival.name}" (${rival.loyalty}% > 50%)`;
+  lockedNotice.style.display = 'block';
+  lockedNotice.innerText = reason;
+  btnDeagle.disabled = true;
+  btnAk.disabled = true;
+  btnGrenade.disabled = true;
+  btnDeagle.style.opacity = '0.4';
+  btnAk.style.opacity = '0.4';
+  btnGrenade.style.opacity = '0.4';
+} else {
+  lockedNotice.style.display = 'none';
+  btnDeagle.disabled = false;
+  btnAk.disabled = false;
+  btnGrenade.disabled = false;
+  btnDeagle.style.opacity = '1';
+  btnAk.style.opacity = '1';
+  btnGrenade.style.opacity = '1';
+}
+document.getElementById('gang-shop-modal').style.display = 'flex';
+}
+
+function buySeeds() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+let price = 10;
+if (dirtyBalance >= price) {
+dirtyBalance -= price;
+weapons.seeds.count++;
+registerDirtyAction();
+showNotification(`Семена за $${price} грязными!`);
+updateUI();
+} else if (balance >= price) {
+balance -= price;
+weapons.seeds.count++;
+showNotification(`Семена за $${price} чистыми!`);
+updateUI();
+} else showNotification(`Недостаточно ($${price})!`);
+}
+
+function performSabotage() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+if (selectedGangIndex === null) return;
+let gang = gangs[selectedGangIndex];
+if (!gang) return;
+let rival = getGangRival(gang);
+if (!rival) { showNotification("Нет соперника!"); return; }
+if (weapons.grenade.count <= 0) { showNotification("Нужна граната!"); return; }
+weapons.grenade.count--;
+
+let rewardMoney = 100 + Math.floor(Math.random() * 101);
+dirtyBalance += rewardMoney;
+let rewardCount = 2 + Math.floor(Math.random() * 9);
+let weaponKeys = ['deagle', 'ak47', 'grenade'];
+for (let i = 0; i < rewardCount; i++) {
+  let k = weaponKeys[Math.floor(Math.random() * weaponKeys.length)];
+  weapons[k].count++;
+}
+let rivalName = rival.name;
+gangs = gangs.filter(g => g.id !== rival.id);
+checkAndRepairRivals();
+closeModal('gang-action-modal');
+showNotification(`⚡ Диверсия! "${rivalName}" уничтожена. Награда: $${rewardMoney} + ${rewardCount} оружия!`);
+updateUI();
+autoSave();
+}
+
+function updateCompetitors() {
+competitors.forEach(comp => {
+if (comp.action === 'improve') comp.loyalty = Math.min(100, comp.loyalty + 5);
+else if (comp.action === 'worsen') comp.loyalty = Math.max(0, comp.loyalty - 5);
+if (comp.lockTurns > 0) comp.lockTurns--;
+});
+renderCompetitors();
+}
+
+function renderCompetitors() {
+let container = document.getElementById('competitors-container');
+if (!container) return;
+container.innerHTML = '';
+competitors.forEach((comp, idx) => {
+let arrow = comp.action === 'improve' ? ' ⬆️' : (comp.action === 'worsen' ? ' ⬇️' : '');
+let card = document.createElement('div');
+card.className = 'competitor-card';
+card.onclick = () => openCompetitorActionModal(idx);
+card.innerHTML = `
+<div class="competitor-info">
+<div class="competitor-title">${comp.name}</div>
+<div class="competitor-loyalty">Лояльность: ${comp.loyalty}%${arrow}</div>
+<div style="font-size:11px; color:#555;">Цена выкупа: $${comp.buyPrice}</div>
+</div>
+`;
+container.appendChild(card);
+});
+}
+
+function openCompetitorActionModal(idx) {
+selectedCompetitorIndex = idx;
+let comp = competitors[idx];
+if (!comp) return;
+document.getElementById('comp-modal-title').innerText = comp.name;
+document.getElementById('comp-modal-loyalty').innerText = `Лояльность: ${comp.loyalty}%`;
+document.getElementById('comp-buy-price').innerText = comp.buyPrice;
+let buyBtn = document.getElementById('comp-buy-btn');
+let sueBtn = document.getElementById('comp-sue-btn');
+let robBtn = document.getElementById('comp-rob-btn');
+buyBtn.style.display = comp.loyalty >= 70 ? 'block' : 'none';
+sueBtn.style.display = comp.loyalty < 30 ? 'block' : 'none';
+robBtn.style.display = comp.loyalty < 30 ? 'block' : 'none';
+document.getElementById('competitor-action-modal').style.display = 'flex';
+}
+
+function competitorAction(type) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (selectedCompetitorIndex === null) return;
+let comp = competitors[selectedCompetitorIndex];
+if (!comp) return;
+if (type === 'improve') {
+if (balance >= 90) { balance -= 90; comp.action = 'improve'; showNotification(`+ к "${comp.name}".`); }
+else showNotification("Недостаточно ($90)!");
+} else if (type === 'worsen') { comp.action = 'worsen'; showNotification(`- к "${comp.name}".`); }
+closeModal('competitor-action-modal');
+updateUI();
+}
+
+function buyCompetitor() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (selectedCompetitorIndex === null) return;
+let comp = competitors[selectedCompetitorIndex];
+if (!comp) return;
+if (balance >= comp.buyPrice) {
+balance -= comp.buyPrice;
+competitors.splice(selectedCompetitorIndex, 1);
+closeModal('competitor-action-modal');
+showNotification(`"${comp.name}" выкуплена!`);
+updateUI();
+} else showNotification(`Недостаточно ($${comp.buyPrice})!`);
+}
+
+function openLawyerModal() {
+closeModal('competitor-action-modal');
+document.getElementById('lawyer-modal').style.display = 'flex';
+}
+
+function sueCompetitor(lawyerType) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+closeModal('lawyer-modal');
+if (selectedCompetitorIndex === null) return;
+let comp = competitors[selectedCompetitorIndex];
+if (!comp) return;
+let cost = lawyerType === 'normal' ? 60 : 160;
+let chance = lawyerType === 'normal' ? 0.30 : 0.70;
+if (balance >= cost) {
+balance -= cost;
+if (Math.random() < chance) {
+let winAmount = Math.floor(Math.random() * 101) + 100;
+balance += winAmount;
+showNotification(`Суд выигран! +$${winAmount}.`);
+} else showNotification("Суд проигран.");
+updateUI();
+} else showNotification(`Недостаточно ($${cost})!`);
+}
+
+function startRobbery() {
+closeModal('competitor-action-modal');
+document.getElementById('robber-modal').style.display = 'flex';
+}
+
+function executeRobbery(type, cost, chance) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+closeModal('robber-modal');
+if (selectedCompetitorIndex === null) return;
+let comp = competitors[selectedCompetitorIndex];
+if (!comp) return;
+if (balance >= cost) {
+balance -= cost;
+if (Math.random() < chance) {
+let loot = Math.floor(Math.random() * 151) + 100;
+dirtyBalance += loot;
+registerDirtyAction();
+showNotification(`Ограбление! +$${loot}.`);
+} else {
+failedRobberiesCount++;
+showNotification("Провал!");
+if (failedRobberiesCount >= 2) {
+jailTurnsLeft = 5;
+showNotification("5 ходов тюрьмы!");
+}
+}
+updateUI();
+} else showNotification(`Недостаточно ($${cost})!`);
+}
+
+function updateFields() {
+fields.forEach(f => {
+if (f.status === 'growing') {
+f.turnsLeft--;
+if (f.turnsLeft <= 0) { f.status = 'ready'; showNotification("🌱 Трава созрела!"); }
+}
+});
+renderFields();
+}
+
+function renderFields() {
+let container = document.getElementById('fields-container');
+if (!container) return;
+container.innerHTML = '';
+fields.forEach((field, idx) => {
+let slot = document.createElement('div');
+slot.className = 'slot field-slot';
+slot.onclick = () => openFieldModal(idx);
+let statusText = "Пусто";
+if (field.status === 'growing') statusText = `Растет (${field.turnsLeft}х)`;
+else if (field.status === 'ready') statusText = "🌾 Собрать!";
+slot.innerHTML = `
+<div class="item-name">Поле #${idx + 1}</div>
+<div style="font-size:10px; font-weight:bold; color:#5d4037;">${statusText}</div>
+`;
+container.appendChild(slot);
+});
+}
+
+function openFieldModal(idx) {
+selectedFieldIndex = idx;
+let field = fields[idx];
+document.getElementById('field-modal-title').innerText = `🌾 Поле #${idx + 1}`;
+let desc = document.getElementById('field-modal-desc');
+let plantBtn = document.getElementById('field-plant-btn');
+let harvestBtn = document.getElementById('field-harvest-btn');
+if (field.status === 'empty') {
+desc.innerText = "Поле пустое.";
+plantBtn.style.display = 'block';
+harvestBtn.style.display = 'none';
+} else if (field.status === 'growing') {
+desc.innerText = `Растет: ${field.turnsLeft}х`;
+plantBtn.style.display = 'none';
+harvestBtn.style.display = 'none';
+} else if (field.status === 'ready') {
+desc.innerText = "Урожай готов!";
+plantBtn.style.display = 'none';
+harvestBtn.style.display = 'block';
+}
+document.getElementById('field-action-modal').style.display = 'flex';
+}
+
+function plantSeeds() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (selectedFieldIndex === null) return;
+if (farmerTurns === 0) { showNotification("Нужен 👨‍🌾!"); return; }
+if (weapons.seeds.count <= 0) { showNotification("Нет семян!"); return; }
+weapons.seeds.count--;
+fields[selectedFieldIndex] = { status: 'growing', turnsLeft: 3 };
+closeModal('field-action-modal');
+showNotification("Посажено!");
+updateUI();
+}
+
+function harvestField() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (selectedFieldIndex === null) return;
+fields[selectedFieldIndex] = { status: 'empty', turnsLeft: 0 };
+let yieldAmount = farmerTurns > 0 ? 3 : 2;
+weapons.weed.count += yieldAmount;
+closeModal('field-action-modal');
+showNotification(`Собрано ${yieldAmount} травы!`);
+updateUI();
+}
+
+function updateStocks() {
+stocks.forEach(stock => {
+let change = (Math.random() * 0.4) - 0.18;
+stock.price = Math.max(5, Math.round(stock.price * (1 + change)));
+});
+renderStocks();
+}
+
+function renderStocks() {
+let container = document.getElementById('stocks-container');
+if (!container) return;
+container.innerHTML = '';
+stocks.forEach((stock, idx) => {
+let card = document.createElement('div');
+card.className = 'stock-card';
+card.innerHTML = `
+<div class="stock-info">
+<div class="stock-title">${stock.name} (${stock.owned})</div>
+<div class="stock-price">Цена: $${stock.price}</div>
+</div>
+<div class="stock-btns">
+<button class="btn-stock btn-buy-stock" onclick="buyStock(${idx}, false)">Купить (💵)</button>
+<button class="btn-stock btn-buy-dirty" onclick="buyStock(${idx}, true)">Купить (🧼)</button>
+<button class="btn-stock btn-sell-stock" ${stock.owned === 0 ? 'disabled' : ''} onclick="sellStock(${idx})">Продать</button>
+</div>
+`;
+container.appendChild(card);
+});
+}
+
+function buyStock(idx, isDirty) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let stock = stocks[idx];
+if (isDirty) {
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+if (dirtyBalance >= stock.price) {
+dirtyBalance -= stock.price;
+stock.owned++;
+stock.boughtTurns.push(turnCount);
+dirtyStockPurchasesThisTurn++;
+registerDirtyAction();
+showNotification(`Акция "${stock.name}" куплена!`);
+updateUI();
+} else showNotification("Недостаточно грязных!");
+} else {
+if (balance >= stock.price) {
+balance -= stock.price;
+stock.owned++;
+stock.boughtTurns.push(turnCount);
+showNotification(`Акция "${stock.name}" куплена!`);
+updateUI();
+} else showNotification("Недостаточно!");
+}
+}
+
+function sellStock(idx) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let stock = stocks[idx];
+if (stock.owned > 0) {
+  if (stock.boughtTurns.length > 0 && stock.boughtTurns[0] === turnCount) {
+    showNotification("Нельзя в тот же ход!");
+    return;
+  }
+  stock.owned--;
+  stock.boughtTurns.shift();
+  balance += stock.price;
+  showNotification(`Акция "${stock.name}" продана за $${stock.price}!`);
+  updateUI();
+}
+}
+
+function getRealtySalePrice(r) {
+  let base = r.currentPrice || r.price;
+  let mult = 1;
+  if (r.upgrades && r.upgrades.paint) mult += 0.25;
+  if (r.upgrades && r.upgrades.furniture) mult += 0.15;
+  return Math.round(base * mult);
+}
+
+function updateRealty() {
+realties.forEach(r => {
+if (r.cooldown > 0) r.cooldown--;
+if (typeof r.currentPrice !== 'number') r.currentPrice = r.price;
+let change;
+if (turnCount >= 15) change = (Math.random() * 0.10) - 0.01;
+else change = (Math.random() * 0.14) - 0.05;
+let newPrice = Math.round(r.currentPrice * (1 + change));
+r.currentPrice = Math.max(Math.round(r.price * 0.6), Math.min(Math.round(r.price * 4), newPrice));
+});
+if (Math.random() < 0.04 * eventChanceMultiplier) {
+realties.forEach(r => { r.currentPrice = Math.max(Math.round(r.price * 0.6), Math.round(r.currentPrice * 0.85)); });
+showNotification("📉 Обвал недвижимости.");
+}
+renderRealty();
+renderBusinesses();
+}
+
+function renderRealty() {
+let container = document.getElementById('realty-container');
+if (!container) return;
+container.innerHTML = '';
+realties.forEach((r, idx) => {
+let price = r.currentPrice || r.price;
+let card = document.createElement('div');
+card.className = 'realty-card';
+let upStr = '';
+if (r.upgrades) {
+  let parts = [];
+  if (r.upgrades.smoke) parts.push('🔥');
+  if (r.upgrades.paint) parts.push('🖼️');
+  if (r.upgrades.furniture) parts.push('🛋️');
+  if (parts.length) upStr = ' [' + parts.join(' ') + ']';
+}
+let statusText = r.owned > 0 ? `В собственности: ${r.owned}${upStr}` : 'Не куплено';
+if (r.cooldown > 0) statusText += ` (Перезарядка: ${r.cooldown}х)`;
+let clickAttr = r.owned > 0 ? `onclick="openRealtyUpgradeModal(${idx})"` : '';
+card.innerHTML = `
+<div class="realty-info" ${clickAttr} style="${r.owned > 0 ? 'cursor:pointer;' : ''}">
+<div class="realty-title">${r.name} — $${price}</div>
+<div style="font-size:11px; color:#555;">${statusText}</div>
+</div>
+<div class="realty-btns">
+<button class="btn-realty btn-buy-stock" onclick="buyRealty(${idx}, false)">Купить (💵)</button>
+<button class="btn-realty btn-buy-dirty" onclick="buyRealty(${idx}, true)">Купить (🧼)</button>
+<button class="btn-realty btn-sell-stock" ${r.owned === 0 || r.cooldown > 0 ? 'disabled' : ''} onclick="sellRealty(${idx})">Продать (💵)</button>
+</div>
+`;
+container.appendChild(card);
+});
+}
+
+function openRealtyUpgradeModal(idx) {
+  selectedRealtyIndex = idx;
+  let r = realties[idx];
+  if (!r || r.owned <= 0) return;
+  document.getElementById('ru-title').innerText = r.name;
+  let ups = r.upgrades || { smoke: false, paint: false, furniture: false };
+  let status = [];
+  if (ups.smoke) status.push('🔥 Датчик дыма установлен');
+  else status.push('⚠️ Нет датчика дыма — риск пожара!');
+  if (ups.paint) status.push('🖼️ Картины (+25%)');
+  if (ups.furniture) status.push('🛋️ Мебель (+15%)');
+  document.getElementById('ru-status').innerHTML = status.join('<br>');
+  document.getElementById('ru-smoke').disabled = ups.smoke;
+  document.getElementById('ru-smoke').style.opacity = ups.smoke ? '0.5' : '1';
+  document.getElementById('ru-paint').disabled = ups.paint;
+  document.getElementById('ru-paint').style.opacity = ups.paint ? '0.5' : '1';
+  document.getElementById('ru-furn').disabled = ups.furniture;
+  document.getElementById('ru-furn').style.opacity = ups.furniture ? '0.5' : '1';
+  document.getElementById('realty-upgrade-modal').style.display = 'flex';
+}
+
+function buyRealtyUpgrade(type) {
+  if (selectedRealtyIndex === null) return;
+  let r = realties[selectedRealtyIndex];
+  if (!r || r.owned <= 0) return;
+  if (!r.upgrades) r.upgrades = { smoke: false, paint: false, furniture: false };
+  let cost = 0;
+  if (type === 'smoke') cost = 200;
+  else if (type === 'paint') cost = 400;
+  else if (type === 'furniture') cost = 300;
+  if (r.upgrades[type]) { showNotification("Уже куплено!"); return; }
+  if (balance < cost) { showNotification(`Недостаточно ($${cost})!`); return; }
+  balance -= cost;
+  r.upgrades[type] = true;
+  showNotification(`Улучшение установлено за $${cost}!`);
+  openRealtyUpgradeModal(selectedRealtyIndex);
+  updateUI();
+  autoSave();
+}
+
+function buyRealty(idx, isDirty) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let r = realties[idx];
+let price = r.currentPrice || r.price;
+if (isDirty) {
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+if (dirtyBalance >= price) {
+dirtyBalance -= price;
+r.owned++;
+r.boughtTurn = turnCount;
+registerDirtyAction();
+showNotification(`Куплено "${r.name}" за грязные!`);
+updateUI();
+} else showNotification("Недостаточно грязных!");
+} else {
+if (balance >= price) {
+balance -= price;
+r.owned++;
+r.boughtTurn = turnCount;
+showNotification(`Куплено "${r.name}"!`);
+updateUI();
+} else showNotification("Недостаточно!");
+}
+}
+
+function sellRealty(idx) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+let r = realties[idx];
+if (r.owned > 0 && r.cooldown === 0) {
+  if (r.boughtTurn === turnCount) {
+    showNotification("Нельзя в тот же ход!");
+    return;
+  }
+  let price = getRealtySalePrice(r);
+  r.owned--;
+  r.cooldown = 10;
+  r.upgrades = { smoke: false, paint: false, furniture: false };
+  balance += price;
+  showNotification(`Продано "${r.name}" за $${price}!`);
+  updateUI();
+}
+}
+
+function renderBusinesses() {
+  let container = document.getElementById('business-container');
+  if (!container) return;
+  container.innerHTML = '';
+  businesses.forEach((b, idx) => {
+    let card = document.createElement('div');
+    card.className = 'business-card';
+    let levelData = businessLaunderLevels.find(l => l.level === b.level) || businessLaunderLevels[0];
+    let status = b.owned
+      ? `Ур. ${b.level} | Отмыв: $${levelData.income}/ход | Загружено: $${b.dirtyLoaded}/$500`
+      : `Не куплено ($${b.price})`;
+    let upgradeHtml = '';
+    if (b.owned && b.level < 5) {
+      let cost = getBusinessUpgradeCost(b.level);
+      upgradeHtml = `<button class="btn-stock" style="background:#2e7d32;" onclick="upgradeBusiness(${idx})">⬆️ Улучшить до ур.${b.level+1} (💵 $${cost})</button>`;
+    } else if (b.owned && b.level >= 5) {
+      upgradeHtml = `<div style="font-size:10px; color:#2e7d32; font-weight:bold;">МАКС. УР.</div>`;
+    }
+    card.innerHTML = `
+      <div class="business-info">
+        <div class="business-title">${b.name}</div>
+        <div style="font-size:11px; color:#555;">${status}</div>
+      </div>
+      <div class="business-btns">
+        ${!b.owned ? `<button class="btn-stock btn-buy-dirty" onclick="buyBusiness(${idx})">Купить (🧼 $${b.price})</button>` : `<button class="btn-stock btn-buy-dirty" onclick="openBusinessDepositModal(${idx})">Загрузить грязные</button>`}
+        ${upgradeHtml}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function upgradeBusiness(idx) {
+  if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+  let b = businesses[idx];
+  if (!b.owned) return;
+  if (b.level >= 5) { showNotification("Макс. уровень!"); return; }
+  let cost = getBusinessUpgradeCost(b.level);
+  if (balance >= cost) {
+    balance -= cost;
+    b.level++;
+    showNotification(`Бизнес "${b.name}" ур. ${b.level}!`);
+    updateUI();
+  } else showNotification(`Недостаточно ($${cost})!`);
+}
+
+function buyBusiness(idx) {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+let b = businesses[idx];
+if (dirtyBalance >= b.price) {
+dirtyBalance -= b.price;
+b.owned = true;
+registerDirtyAction();
+showNotification(`Куплен "${b.name}"!`);
+updateUI();
+} else showNotification("Недостаточно грязных!");
+}
+
+function openBusinessDepositModal(idx) {
+activeBusinessForModal = idx;
+document.getElementById('business-deposit-modal').style.display = 'flex';
+}
+
+function submitBusinessDeposit() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+if (activeBusinessForModal === null) return;
+let b = businesses[activeBusinessForModal];
+let input = document.getElementById('biz-deposit-input');
+let amt = parseInt(input.value);
+if (isNaN(amt) || amt <= 0 || dirtyBalance < amt) { showNotification("Неверная сумма!"); return; }
+if (b.dirtyLoaded + amt > 500) { showNotification("Лимит $500!"); return; }
+dirtyBalance -= amt;
+b.dirtyLoaded += amt;
+registerDirtyAction();
+input.value = '';
+closeModal('business-deposit-modal');
+showNotification(`Внесено $${amt} в "${b.name}"!`);
+updateUI();
+}
+
+function renderAdultMovies() {
+let container = document.getElementById('adult-movie-container');
+if (!container) return;
+let phKingContainer = document.getElementById('ph-king-container');
+if (moviesFilmedTotal >= 10 && authority >= 50) {
+phKingContainer.innerHTML = `<button class="btn-action" style="background:#e91e63;" onclick="winPhKing()">👑 Стать Королем PH (Победа!)</button>`;
+} else phKingContainer.innerHTML = '';
+if (!activeMovie) {
+container.innerHTML = `<p style="font-size:12px; color:#666;">Нет активных съемок.</p>`;
+return;
+}
+if (activeMovie.status === 'filming') {
+container.innerHTML = `
+<div style="background:#eceff1; padding:10px; border-radius:8px; font-size:12px;">
+🎥 Съемки: осталось ${activeMovie.turnsLeft}х
+</div>
+`;
+} else if (activeMovie.status === 'ready') {
+container.innerHTML = `
+<div style="background:#e8f5e9; padding:10px; border-radius:8px; font-size:12px; text-align:center;">
+🎬 Фильм готов! Просмотры: <b>${activeMovie.views}</b><br>
+<button class="btn-action" style="background:#2e7d32; margin-top:6px; justify-content:center;" onclick="convertMovieViews()">💰 Обменять на $${Math.floor(activeMovie.views / pornRate)}</button>
+</div>
+`;
+}
+}
+
+function openMovieSelectModal() {
+if (jailTurnsLeft > 0) { showNotification("Вы в обезьяннике!"); return; }
+if (isInterpolBlocking()) { interpolBlockMessage(); return; }
+if (isAdultMoviesBanned) { showNotification("Запрещено!"); return; }
+if (activeMovie) { showNotification("Уже снимаете!"); return; }
+selectedActresses = [];
+let list = document.getElementById('actresses-list');
+list.innerHTML = '';
+actressesData.forEach(actress => {
+let card = document.createElement('div');
+card.className = 'actress-card';
+card.id = `actress-${actress.id}`;
+card.onclick = () => toggleActressSelection(actress.id);
+card.innerHTML = `
+<div style="font-weight:bold; font-size:12px;">${actress.name}</div>
+<div style="font-size:10px; color:#b0bec5;">🧼 $${actress.price} | 💵 $${Math.round(actress.price * 2.5)}</div>
+<div style="font-size:10px; color:#b0bec5;">Просмотры: ${actress.minViews}-${actress.maxViews}</div>
+`;
+list.appendChild(card);
+});
+document.getElementById('movie-select-modal').style.display = 'flex';
+}
+
+function toggleActressSelection(id) {
+let idx = selectedActresses.indexOf(id);
+if (idx !== -1) {
+selectedActresses.splice(idx, 1);
+document.getElementById(`actress-${id}`).classList.remove('selected');
+} else {
+if (selectedActresses.length >= 2) { showNotification("Макс 2!"); return; }
+selectedActresses.push(id);
+document.getElementById(`actress-${id}`).classList.add('selected');
+}
+}
+
+function startMovieFilming() {
+if (selectedActresses.length === 0) { showNotification("Выберите актрису!"); return; }
+let totalCostDirty = 0;
+let totalCostClean = 0;
+let minV = 0;
+let maxV = 0;
+selectedActresses.forEach(id => {
+let a = actressesData.find(x => x.id === id);
+if (a) {
+totalCostDirty += a.price;
+totalCostClean += Math.round(a.price * 2.5);
+minV += a.minViews;
+maxV += a.maxViews;
+}
+});
+pendingMovieCosts = { dirty: totalCostDirty, clean: totalCostClean, minV: minV, maxV: maxV };
+document.getElementById('movie-pay-dirty').innerText = totalCostDirty;
+document.getElementById('movie-pay-clean').innerText = totalCostClean;
+closeModal('movie-select-modal');
+document.getElementById('movie-pay-modal').style.display = 'flex';
+}
+
+function confirmMoviePayment(useDirty) {
+  if (!pendingMovieCosts) return;
+  let c = pendingMovieCosts;
+  if (useDirty) {
+    if (dirtyBalance < c.dirty) { showNotification(`Нужно $${c.dirty} грязных!`); return; }
+    dirtyBalance -= c.dirty;
+    registerDirtyAction();
+  } else {
+    if (balance < c.clean) { showNotification(`Нужно $${c.clean} чистых!`); return; }
+    balance -= c.clean;
+  }
+  activeMovie = { status: 'filming', turnsLeft: 2, minViews: c.minV, maxViews: c.maxV, views: 0 };
+  moviesFilmedTotal++;
+  pendingMovieCosts = null;
+  closeModal('movie-pay-modal');
+  showNotification("Съемки начались!");
+  updateUI();
+  autoSave();
+}
+
+function convertMovieViews() {
+if (!activeMovie || activeMovie.status !== 'ready') return;
+let cleanEarned = Math.floor(activeMovie.views / pornRate);
+balance += cleanEarned;
+showNotification(`+$${cleanEarned} чистыми!`);
+activeMovie = null;
+updateUI();
+}
+
+function renderInventory() {
+let container = document.getElementById('inventory');
+if (!container) return;
+container.innerHTML = '';
+for (let i = 0; i < inventorySize; i++) {
+let slot = document.createElement('div');
+if (i >= inventorySize - lockedSlotsCount) {
+slot.className = 'slot locked';
+slot.innerHTML = '<div style="color:#d32f2f; font-weight:bold; font-size:10px;">🔒</div>';
+} else if (inventory[i]) {
+let item = inventory[i];
+let itemClass = 'slot filled';
+if (item.isTreasure) itemClass = 'slot filled treasure-item';
+else if (item.isRare) itemClass = 'slot filled rare-item';
+else if (item.isOcean) itemClass = 'slot filled ocean-item';
+slot.className = itemClass;
+slot.onclick = () => sellItem(i);
+slot.innerHTML = `
+<div class="item-icon">${item.icon}</div>
+<div class="item-name">${item.name}</div>
+<div class="item-price">$${item.price}</div>
+`;
+} else {
+slot.className = 'slot';
+slot.innerHTML = '<div style="color:#ccc;">Пусто</div>';
+}
+container.appendChild(slot);
+}
+}
+
+function renderWorkers() {
+let container = document.getElementById('workers-container');
+if (!container) return;
+container.innerHTML = '';
+for (let i = 0; i < 4; i++) {
+let card = document.createElement('div');
+card.className = 'worker-card';
+let worker = workers[i];
+let loot = workerLoots[i];
+let workerHtml = '';
+if (worker) {
+workerHtml = `
+<div class="slot worker-slot">
+<div class="item-icon">${worker.emoji}</div>
+<div class="item-name">${worker.name}</div>
+<div style="font-size:9px; color:#555;">${worker.turnsLeft}х</div>
+</div>
+`;
+} else {
+workerHtml = `
+<div class="slot worker-slot" onclick="openWorkerModal(${i})">
+<div style="font-size:20px;">➕</div>
+<div class="item-name">Нанять</div>
+</div>
+`;
+}
+let lootHtml = '';
+if (loot) {
+let lootClass = loot.isTreasure ? 'slot worker-loot filled treasure-item' : 'slot worker-loot filled';
+lootHtml = `
+<div class="${lootClass}" onclick="takeWorkerLoot(${i})">
+<div class="item-icon">${loot.icon}</div>
+<div class="item-name">${loot.name}</div>
+<div class="item-price">$${loot.price}</div>
+</div>
+`;
+} else {
+lootHtml = `
+<div class="slot worker-loot">
+<div style="color:#ccc; font-size:10px;">Улова нет</div>
+</div>
+`;
+}
+card.innerHTML = workerHtml + lootHtml;
+container.appendChild(card);
+}
+}
+
+function updateUI() {
+if (infiniteMoney) {
+  balance = 999999999;
+  dirtyBalance = 999999999;
+}
+
+document.getElementById('balance').innerText = balance;
+document.getElementById('dirty-balance').innerText = dirtyBalance;
+document.getElementById('turn-count').innerText = turnCount;
+
+let income = (hasFishShop && !isShopFrozen ? 5 : 0);
+document.getElementById('top-income').innerText = income;
+
+let debtInfo = document.getElementById('debt-info');
+if (credits.length > 0) {
+  let total = credits.reduce((s, c) => s + c.owed, 0);
+  debtInfo.innerText = `⚠️ Кредитов: ${credits.length} на $${total}`;
+  document.getElementById('pay-debt-val').innerText = `$${credits[0].owed}`;
+} else {
+  debtInfo.innerText = '';
+  document.getElementById('pay-debt-val').innerText = '$0';
+}
+
+document.getElementById('rod-name').innerText = rods[currentRodIndex].name;
+document.getElementById('station-status').innerText = hasStation ? "Есть" : "Нет";
+document.getElementById('guard-status').innerText = guardTurns > 0 ? `Да (${guardTurns}х)` : (hasDog ? "Собака" : "Нет");
+document.getElementById('bribe-status').innerText = (bribeFishTurns > 0 || bribePoliceTurns > 0) ? "Активен" : "Нет";
+document.getElementById('fish-count-text').innerText = `${fishCaughtThisTurn}/5`;
+
+document.getElementById('shop-price-text').innerText = "$100";
+
+let shopExchangeBtn = document.getElementById('bld-shop-exchange');
+if (shopExchangeBtn) shopExchangeBtn.style.display = hasFishShop ? 'flex' : 'none';
+
+document.getElementById('salmon-status-text').innerText = hasSalmonFarm ? `${salmonFarmTurnsLeft}х` : '3х';
+
+document.getElementById('deposit-amount-display').innerText = foreignDeposit.amount;
+document.getElementById('deposit-rate-display').innerText = foreignDeposit.rate;
+document.getElementById('deposit-turns-display').innerText = foreignDeposit.active ? (foreignDeposit.turnsLeft > 0 ? `Заморозка (${foreignDeposit.turnsLeft}х)` : "Выплаты идут!") : "Вклад не открыт";
+
+document.getElementById('bank-amount-display').innerText = bank.amount;
+let bankStatus = document.getElementById('bank-status-display');
+let bankWithdrawBtn = document.getElementById('bank-withdraw-btn');
+if (bank.active) {
+  if (bank.turnsLeft > 0) {
+    bankStatus.innerText = `🔒 Заблокировано (${bank.turnsLeft} ход.)`;
+    bankWithdrawBtn.style.display = 'none';
+  } else {
+    bankStatus.innerText = `✅ Готово к выводу!`;
+    bankWithdrawBtn.style.display = 'flex';
+  }
+} else {
+  bankStatus.innerText = "Ячейка не открыта";
+  bankWithdrawBtn.style.display = 'none';
+}
+
+document.getElementById('happiness-val').innerText = `${happiness} / 100`;
+document.getElementById('happiness-bar').style.width = `${happiness}%`;
+let bfCont = document.getElementById('boyfriend-container');
+if (bfCont) bfCont.innerHTML = hasBoyfriend ? `❤️ ${boyfriendName}` : '<button class="btn-small-boy" onclick="buyBoyfriend()">Парень ($100)</button>';
+
+document.getElementById('health-val').innerText = `${health} / 100`;
+document.getElementById('health-bar').style.width = `${health}%`;
+
+let docText = document.getElementById('doctor-status-text');
+if (docText) {
+  docText.innerText = hasDoctor ? `🩺 Доктор ${doctorName} — защита ${doctorTurns} ход.` : '';
+}
+
+document.getElementById('authority-val').innerText = `${authority} / 100`;
+document.getElementById('authority-bar').style.width = `${authority}%`;
+
+let electionsCont = document.getElementById('bribe-elections-container');
+if (electionsCont) {
+if (authority >= 100) electionsCont.innerHTML = `<button class="btn-action" style="background:#e91e63; margin-top:8px;" onclick="bribeElections()">👑 Подтасовать выборы ($5000)</button>`;
+else electionsCont.innerHTML = '';
+}
+
+let illnessText = document.getElementById('illness-status-text');
+if (illnessText) illnessText.innerText = isSick ? "⚠️ Вы больны!" : "";
+
+let sellerStatus = document.getElementById('seller-status');
+if (sellerStatus) sellerStatus.innerText = sellerTurns > 0 ? "Нанят" : "Нет";
+let sellerTimer = document.getElementById('seller-timer');
+if (sellerTimer) sellerTimer.innerText = sellerTurns > 0 ? `Осталось: ${sellerTurns}` : "";
+
+let staffTimers = document.getElementById('staff-timers');
+if (staffTimers) staffTimers.innerText = `Фермер: ${farmerTurns > 0 ? farmerTurns + 'х' : 'Нет'} | Курьер: ${courierTurns > 0 ? courierTurns + 'х' : 'Нет'}`;
+
+let warInfo = document.getElementById('war-info');
+if (warInfo) warInfo.innerText = warTurnsLeft > 0 ? `⚔️ ВОЙНА! Осталось: ${warTurnsLeft}` : '';
+
+let casinoNotice = document.getElementById('casino-closed-notice');
+let playCasinoBtn = document.getElementById('play-casino-btn');
+if (casinoClosed) {
+  if (casinoNotice) casinoNotice.style.display = 'block';
+  if (playCasinoBtn) playCasinoBtn.style.display = 'none';
+} else {
+  if (casinoNotice) casinoNotice.style.display = 'none';
+  if (playCasinoBtn && hasCasino) playCasinoBtn.style.display = 'flex';
+}
+
+let creditsList = document.getElementById('credits-list');
+if (creditsList) {
+  if (credits.length === 0) creditsList.innerHTML = '<div style="color:#888;">Нет активных кредитов</div>';
+  else creditsList.innerHTML = credits.map((c, i) => `<div>Кредит #${i+1}: $${c.amount} → $${c.owed} (${c.turnsLeft}х из ${c.term})</div>`).join('');
+}
+
+updateDirtyActionsDisplay();
+updateInterpolDisplay();
+renderInventory();
+renderWorkers();
+renderMarket();
+renderAdultMovies();
+renderCompanyUI();
+renderGangs();
+renderCompetitors();
+renderFields();
+renderStocks();
+renderRealty();
+renderBusinesses();
+}
+
+function restartGame() {
+localStorage.removeItem(SAVE_KEY);
+if (TG && TG.CloudStorage) {
+  try { TG.CloudStorage.removeItem(SAVE_KEY); } catch(e) {}
+}
+location.reload();
+}
+
+function openPromoModal() {
+  document.getElementById('promo-result').innerText = '';
+  document.getElementById('promo-input').value = '';
+  document.getElementById('promo-modal').style.display = 'flex';
+}
+
+function applyPromoCode() {
+  if (promoUsed) {
+    document.getElementById('promo-result').innerText = '❌ Промокод уже использован!';
+    document.getElementById('promo-result').style.color = '#ff5252';
+    return;
+  }
+  let code = document.getElementById('promo-input').value.trim().toUpperCase();
+  if (code === 'MIDAS_TOUCH') {
+    infiniteMoney = true;
+    promoUsed = true;
+    balance = 999999999;
+    dirtyBalance = 999999999;
+    document.getElementById('promo-result').innerText = '🎉 КОД АКТИВИРОВАН!';
+    document.getElementById('promo-result').style.color = '#00e676';
+    showNotification('💎 Промокод активирован!');
+    updateUI();
+    autoSave();
+    setTimeout(() => closeModal('promo-modal'), 2000);
+  } else {
+    document.getElementById('promo-result').innerText = '❌ Неверный промокод!';
+    document.getElementById('promo-result').style.color = '#ff5252';
+  }
+}
+
+const SAVE_KEY = 'fishing_crime_save_v9';
+let autoSaveEnabled = false;
+
+function collectGameState() {
+  return {
+    balance, dirtyBalance, turnCount, credits, collectorsCount, failedCreditsCount,
+    happiness, health, authority, boughtAuthorityUpgrades,
+    hasBoyfriend, boyfriendName, boyfriendTurns,
+    hasDoctor, doctorName, doctorTurns,
+    isSick, hasParentsDied, criminalCaseCount,
+    policeFreezeTurns, currentRodIndex, inventory, lockedSlotsCount,
+    inspectorSeizeCount, salesThisTurn, dirtyStockPurchasesThisTurn,
+    dirtyStockViolationCount, failedRobberiesCount, foreignDeposit,
+    bribeFishTurns, bribePoliceTurns, fishCaughtThisTurn, jailTurnsLeft,
+    hasFishShop, fishShopLevel, hasHotel, hasSalmonFarm, salmonFarmTurnsLeft,
+    isShopFrozen, hasStation, hasBanya, hasCasino, poisonTurnsLeft,
+    poisonDurationConfig, guardTurns, hasDog, oceanIncomeTotal,
+    hasHiredBefore, workers, workerLoots,
+    eventChanceMultiplier, normalDifficulty, hardcoreDifficulty,
+    difficultyName, robberyLossPercent, illnessHealthLoss, medusaChance,
+    dirtyActionsThisTurn, warTurnsLeft, warMultiplier, cartelWarOffered,
+    cartelDonateOffered, soloDonationOffered,
+    fireChance, policeRaidStart, policeRaidInterval, pornRate, weaponMarkup,
+    company,
+    weapons, weaponPrices, sellerTurns, farmerTurns, courierTurns,
+    weaponIncomeTotal, weaponPoliceCaughtCount,
+    selectedActresses, activeMovie, moviesFilmedTotal, policePornCooldown,
+    isAdultMoviesBanned,
+    fields,
+    gangs, competitors,
+    realties, businesses, stocks,
+    infiniteMoney, promoUsed,
+    casinoPlaysHistory, interpolTriggered, interpolTurnsLeft, casinoClosed, interpolActive,
+    bank,
+    _version: 9
+  };
+}
+
+function applyGameState(s) {
+  if (!s) return false;
+  balance = s.balance ?? balance;
+  dirtyBalance = s.dirtyBalance ?? dirtyBalance;
+  turnCount = s.turnCount ?? turnCount;
+  credits = s.credits ?? credits;
+  collectorsCount = s.collectorsCount ?? collectorsCount;
+  failedCreditsCount = s.failedCreditsCount ?? failedCreditsCount;
+  happiness = s.happiness ?? happiness;
+  health = s.health ?? health;
+  authority = s.authority ?? authority;
+  boughtAuthorityUpgrades = s.boughtAuthorityUpgrades ?? boughtAuthorityUpgrades;
+  hasBoyfriend = s.hasBoyfriend ?? hasBoyfriend;
+  boyfriendName = s.boyfriendName ?? boyfriendName;
+  boyfriendTurns = s.boyfriendTurns ?? boyfriendTurns;
+  hasDoctor = s.hasDoctor ?? hasDoctor;
+  doctorName = s.doctorName ?? doctorName;
+  doctorTurns = s.doctorTurns ?? doctorTurns;
+  isSick = s.isSick ?? isSick;
+  hasParentsDied = s.hasParentsDied ?? hasParentsDied;
+  criminalCaseCount = s.criminalCaseCount ?? criminalCaseCount;
+  policeFreezeTurns = s.policeFreezeTurns ?? policeFreezeTurns;
+  currentRodIndex = s.currentRodIndex ?? currentRodIndex;
+  inventory = s.inventory ?? inventory;
+  lockedSlotsCount = s.lockedSlotsCount ?? lockedSlotsCount;
+  inspectorSeizeCount = s.inspectorSeizeCount ?? inspectorSeizeCount;
+  salesThisTurn = s.salesThisTurn ?? salesThisTurn;
+  dirtyStockPurchasesThisTurn = s.dirtyStockPurchasesThisTurn ?? dirtyStockPurchasesThisTurn;
+  dirtyStockViolationCount = s.dirtyStockViolationCount ?? dirtyStockViolationCount;
+  failedRobberiesCount = s.failedRobberiesCount ?? failedRobberiesCount;
+  foreignDeposit = s.foreignDeposit ?? foreignDeposit;
+  bribeFishTurns = s.bribeFishTurns ?? bribeFishTurns;
+  bribePoliceTurns = s.bribePoliceTurns ?? bribePoliceTurns;
+  fishCaughtThisTurn = s.fishCaughtThisTurn ?? fishCaughtThisTurn;
+  jailTurnsLeft = s.jailTurnsLeft ?? jailTurnsLeft;
+  hasFishShop = s.hasFishShop ?? hasFishShop;
+  fishShopLevel = s.fishShopLevel ?? fishShopLevel;
+  hasHotel = s.hasHotel ?? hasHotel;
+  hasSalmonFarm = s.hasSalmonFarm ?? hasSalmonFarm;
+  salmonFarmTurnsLeft = s.salmonFarmTurnsLeft ?? salmonFarmTurnsLeft;
+  isShopFrozen = s.isShopFrozen ?? isShopFrozen;
+  hasStation = s.hasStation ?? hasStation;
+  hasBanya = s.hasBanya ?? hasBanya;
+  hasCasino = s.hasCasino ?? hasCasino;
+  poisonTurnsLeft = s.poisonTurnsLeft ?? poisonTurnsLeft;
+  poisonDurationConfig = s.poisonDurationConfig ?? poisonDurationConfig;
+  guardTurns = s.guardTurns ?? guardTurns;
+  hasDog = s.hasDog ?? hasDog;
+  oceanIncomeTotal = s.oceanIncomeTotal ?? oceanIncomeTotal;
+  hasHiredBefore = s.hasHiredBefore ?? hasHiredBefore;
+  workers = s.workers ?? workers;
+  workerLoots = s.workerLoots ?? workerLoots;
+  eventChanceMultiplier = s.eventChanceMultiplier ?? eventChanceMultiplier;
+  normalDifficulty = s.normalDifficulty ?? normalDifficulty;
+  hardcoreDifficulty = s.hardcoreDifficulty ?? hardcoreDifficulty;
+  difficultyName = s.difficultyName ?? difficultyName;
+  robberyLossPercent = s.robberyLossPercent ?? robberyLossPercent;
+  illnessHealthLoss = s.illnessHealthLoss ?? illnessHealthLoss;
+  medusaChance = s.medusaChance ?? medusaChance;
+  dirtyActionsThisTurn = s.dirtyActionsThisTurn ?? dirtyActionsThisTurn;
+  warTurnsLeft = s.warTurnsLeft ?? warTurnsLeft;
+  warMultiplier = s.warMultiplier ?? warMultiplier;
+  cartelWarOffered = s.cartelWarOffered ?? cartelWarOffered;
+  cartelDonateOffered = s.cartelDonateOffered ?? cartelDonateOffered;
+  soloDonationOffered = s.soloDonationOffered ?? soloDonationOffered;
+  fireChance = s.fireChance ?? fireChance;
+  policeRaidStart = s.policeRaidStart ?? policeRaidStart;
+  policeRaidInterval = s.policeRaidInterval ?? policeRaidInterval;
+  pornRate = s.pornRate ?? pornRate;
+  weaponMarkup = s.weaponMarkup ?? weaponMarkup;
+  company = s.company ?? company;
+  weapons = s.weapons ?? weapons;
+  weaponPrices = s.weaponPrices ?? weaponPrices;
+  sellerTurns = s.sellerTurns ?? sellerTurns;
+  farmerTurns = s.farmerTurns ?? farmerTurns;
+  courierTurns = s.courierTurns ?? courierTurns;
+  weaponIncomeTotal = s.weaponIncomeTotal ?? weaponIncomeTotal;
+  weaponPoliceCaughtCount = s.weaponPoliceCaughtCount ?? weaponPoliceCaughtCount;
+  selectedActresses = s.selectedActresses ?? selectedActresses;
+  activeMovie = s.activeMovie ?? activeMovie;
+  moviesFilmedTotal = s.moviesFilmedTotal ?? moviesFilmedTotal;
+  policePornCooldown = s.policePornCooldown ?? policePornCooldown;
+  isAdultMoviesBanned = s.isAdultMoviesBanned ?? isAdultMoviesBanned;
+  fields = s.fields ?? fields;
+  gangs = s.gangs ?? gangs;
+  competitors = s.competitors ?? competitors;
+  realties = s.realties ?? realties;
+  businesses = s.businesses ?? businesses;
+  stocks = s.stocks ?? stocks;
+  infiniteMoney = s.infiniteMoney ?? infiniteMoney;
+  promoUsed = s.promoUsed ?? promoUsed;
+  casinoPlaysHistory = s.casinoPlaysHistory ?? casinoPlaysHistory;
+  interpolTriggered = s.interpolTriggered ?? interpolTriggered;
+  interpolTurnsLeft = s.interpolTurnsLeft ?? interpolTurnsLeft;
+  casinoClosed = s.casinoClosed ?? casinoClosed;
+  interpolActive = s.interpolActive ?? interpolActive;
+  bank = s.bank ?? bank;
+
+  const badge = document.getElementById('difficulty-badge');
+  if (badge && difficultyName) badge.innerText = difficultyName;
+  const diffModal = document.getElementById('difficulty-modal');
+  if (diffModal) diffModal.style.display = 'none';
+
+  return true;
+}
+
+function saveGame() {
+  try {
+    let data = JSON.stringify(collectGameState());
+    localStorage.setItem(SAVE_KEY, data);
+    if (TG && TG.CloudStorage) {
+      try { TG.CloudStorage.setItem(SAVE_KEY, data); } catch(e) { console.log('CloudStorage save error', e); }
+    }
+    showNotification('💾 Сохранено!');
+  } catch (e) { console.error(e); showNotification('❌ Ошибка сохранения!'); }
+}
+
+function autoSave() {
+  if (!autoSaveEnabled) return;
+  try {
+    let data = JSON.stringify(collectGameState());
+    localStorage.setItem(SAVE_KEY, data);
+    if (TG && TG.CloudStorage) {
+      try { TG.CloudStorage.setItem(SAVE_KEY, data); } catch(e) { console.log('CloudStorage autosave error', e); }
+    }
+  } catch (e) { console.error(e); }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) { showNotification('📂 Сохранение не найдено!'); return; }
+    applyGameState(JSON.parse(raw));
+    updateUI();
+    showNotification('📂 Загружено!');
+  } catch (e) { console.error(e); showNotification('❌ Ошибка загрузки!'); }
+}
+
+function loadFromCloud(callback) {
+  if (!TG || !TG.CloudStorage) { callback(null); return; }
+  try {
+    TG.CloudStorage.getItem(SAVE_KEY, (err, value) => {
+      if (err || !value) { callback(null); return; }
+      callback(value);
+    });
+  } catch (e) {
+    console.log('Cloud load error', e);
+    callback(null);
+  }
+}
+
+function doStartup() {
+  const startupModal = document.getElementById('startup-modal');
+  const localRaw = localStorage.getItem(SAVE_KEY);
+
+  loadFromCloud((cloudRaw) => {
+    const raw = cloudRaw || localRaw;
+    if (raw) {
+      document.getElementById('btn-continue-save').onclick = () => {
+        try {
+          applyGameState(JSON.parse(raw));
+          autoSaveEnabled = true;
+          startupModal.style.display = 'none';
+          if (!difficultyName) document.getElementById('difficulty-modal').style.display = 'flex';
+          updateUI();
+        } catch (e) {
+          console.error(e);
+          startupModal.style.display = 'none';
+          document.getElementById('difficulty-modal').style.display = 'flex';
+        }
+      };
+      document.getElementById('btn-start-new').onclick = () => {
+        localStorage.removeItem(SAVE_KEY);
+        if (TG && TG.CloudStorage) {
+          try { TG.CloudStorage.removeItem(SAVE_KEY); } catch(e) {}
+        }
+        startupModal.style.display = 'none';
+        document.getElementById('difficulty-modal').style.display = 'flex';
+      };
+    } else {
+      startupModal.style.display = 'none';
+      document.getElementById('difficulty-modal').style.display = 'flex';
+    }
+  });
+}
+
+doStartup();
+
+updatePrices();
+updateUI();
+</script>
+</body>
+</html>
